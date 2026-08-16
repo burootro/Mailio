@@ -12,10 +12,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.burootro.mailio.ui.screens.home.HomeScreen
+import com.burootro.mailio.ui.screens.inbox.InboxScreen
+import com.burootro.mailio.ui.screens.message.MessageScreen
 import com.burootro.mailio.ui.screens.onboarding.OnboardingScreen
 import com.burootro.mailio.ui.screens.splash.SplashScreen
 import com.burootro.mailio.ui.theme.TextSecondary
@@ -25,6 +29,7 @@ object Routes {
     const val ONBOARDING = "onboarding"
     const val HOME = "home"
     const val INBOX = "inbox"
+    const val MESSAGE = "message"
     const val SETTINGS = "settings"
 }
 
@@ -102,6 +107,47 @@ fun MailioNavigation(
 
         composable(
             route = "${Routes.INBOX}/{addressId}",
+            arguments = listOf(
+                navArgument("addressId") { type = NavType.StringType }
+            ),
+            enterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { it },
+                    animationSpec = tween(400)
+                ) + fadeIn(tween(300))
+            },
+            exitTransition = {
+                slideOutHorizontally(
+                    targetOffsetX = { -it / 4 },
+                    animationSpec = tween(400)
+                ) + fadeOut(tween(250))
+            },
+            popEnterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { -it / 4 },
+                    animationSpec = tween(400)
+                ) + fadeIn(tween(400))
+            },
+            popExitTransition = {
+                slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(400)
+                ) + fadeOut(tween(300))
+            }
+        ) {
+            InboxScreen(
+                onBack = { navController.popBackStack() },
+                onMessageClick = { message ->
+                    navController.navigate("${Routes.MESSAGE}/${message.id}")
+                }
+            )
+        }
+
+        composable(
+            route = "${Routes.MESSAGE}/{messageId}",
+            arguments = listOf(
+                navArgument("messageId") { type = NavType.StringType }
+            ),
             enterTransition = {
                 slideInHorizontally(
                     initialOffsetX = { it },
@@ -115,7 +161,9 @@ fun MailioNavigation(
                 ) + fadeOut(tween(300))
             }
         ) {
-            PlaceholderScreen("صندوق الوارد — قريباً")
+            MessageScreen(
+                onBack = { navController.popBackStack() }
+            )
         }
 
         composable(
