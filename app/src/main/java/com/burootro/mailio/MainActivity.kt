@@ -11,6 +11,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.burootro.mailio.ui.navigation.MailioNavigation
 import com.burootro.mailio.ui.theme.MailioGradients
 import com.burootro.mailio.ui.theme.MailioTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -37,7 +38,6 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun MailioRoot() {
-    // الخلفية المتوهجة الثابتة تحت كل الشاشات
     Box(modifier = Modifier.fillMaxSize()) {
         Box(
             modifier = Modifier
@@ -45,6 +45,6 @@ private fun MailioRoot() {
                 .background(MailioGradients.backgroundGlow)
         )
 
-        // هنا هتتركب شاشات التطبيق في الخطوة الجاية
+        MailioNavigation()
     }
 }
