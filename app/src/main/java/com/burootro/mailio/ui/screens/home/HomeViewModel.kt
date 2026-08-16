@@ -4,9 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.burootro.mailio.data.prefs.MailioPreferences
 import com.burootro.mailio.data.repository.MailRepository
+import com.burootro.mailio.data.repository.SyncRepository
 import com.burootro.mailio.domain.model.AddressLifetime
 import com.burootro.mailio.domain.model.MailAddress
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +22,9 @@ data class HomeUiState(
     val addresses: List<MailAddress> = emptyList(),
     val totalUnread: Int = 0,
     val isLoading: Boolean = true,
-    val recoveryKey: String? = null
+    val recoveryKey: String? = null,
+    val isSyncing: Boolean = false,
+    val isConnected: Boolean = true
 )
 
 sealed interface HomeEvent {
@@ -31,22 +35,31 @@ sealed interface HomeEvent {
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: MailRepository,
+    private val syncRepository: SyncRepository,
     private val prefs: MailioPreferences
 ) : ViewModel() {
 
-    /** الدومين المتاح — هيتغير للسيرفر لما نربط الباك إند */
-    val availableDomains = listOf("mailio.app")
+    private val _isSyncing = MutableStateFlow(false)
+    private val _isConnected = MutableStateFlow(true)
+    private val _domains = MutableStateFlow(listOf("mailio.app"))
+
+    val availableDomains: List<String>
+        get() = _domains.value
 
     val uiState: StateFlow<HomeUiState> = combine(
         repository.observeAddresses(),
         repository.observeTotalUnread(),
-        prefs.recoveryKey
-    ) { addresses, unread, key ->
+        prefs.recoveryKey,
+        _isSyncing,
+        _isConnected
+    ) { addresses, unread, key, syncing, connected ->
         HomeUiState(
             addresses = addresses,
             totalUnread = unread,
             isLoading = false,
-            recoveryKey = key
+            recoveryKey = key,
+            isSyncing = syncing,
+            isConnected = connected
         )
     }.stateIn(
         scope = viewModelScope,
@@ -62,9 +75,75 @@ class HomeViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            prefs.getOrCreateRecoveryKey()
             prefs.getOrCreateDeviceId()
+            bootstrap()
         }
+
+        // مزامنة دورية كل 20 ثانية
+        viewModelScope.launch {
+            while (true) {
+                delay(20_000)
+                quietSync()
+            }
+        }
+    }
+
+    /**
+     * التسجيل على السيرفر أول مرة، وسحب البيانات
+     */
+    private suspend fun bootstrap() {
+        _isSyncing.value = true
+
+        syncRepository.ensureRegistered().fold(
+            onSuccess = {
+                _isConnected.value = true
+                syncRepository.syncAddresses()
+                syncRepository.syncMessages()
+            },
+            onFailure = {
+                _isConnected.value = false
+                _events.value = HomeEvent.ShowMessage(
+                    "مفيش اتصال بالسيرفر — التطبيق شغال محلياً"
+                )
+            }
+        )
+
+        _isSyncing.value = false
+    }
+
+    fun refresh() {
+        viewModelScope.launch {
+            _isSyncing.value = true
+
+            syncRepository.syncAddresses()
+            syncRepository.syncMessages().fold(
+                onSuccess = { result ->
+                    _isConnected.value = true
+                    if (result.newMessages > 0) {
+                        _events.value = HomeEvent.ShowMessage(
+                            "وصل ${result.newMessages} رسالة جديدة"
+                        )
+                    }
+                },
+                onFailure = {
+                    _isConnected.value = false
+                }
+            )
+
+            _isSyncing.value = false
+        }
+    }
+
+    /**
+     * مزامنة صامتة من غير رسايل للمستخدم
+     */
+    private suspend fun quietSync() {
+        if (_isSyncing.value) return
+
+        syncRepository.syncMessages().fold(
+            onSuccess = { _isConnected.value = true },
+            onFailure = { _isConnected.value = false }
+        )
     }
 
     fun createAddress(
@@ -78,14 +157,15 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _isCreating.value = true
 
-            repository.createAddress(
-                domain = domain,
+            syncRepository.createAddress(
                 localPart = localPart,
                 label = label,
-                lifetime = lifetime
+                lifetime = lifetime,
+                domain = domain
             ).fold(
-                onSuccess = { address ->
-                    _events.value = HomeEvent.AddressCreated(address.email)
+                onSuccess = { email ->
+                    _isConnected.value = true
+                    _events.value = HomeEvent.AddressCreated(email)
                 },
                 onFailure = { error ->
                     _events.value = HomeEvent.ShowMessage(
@@ -106,14 +186,14 @@ class HomeViewModel @Inject constructor(
 
     fun deleteAddress(address: MailAddress) {
         viewModelScope.launch {
-            repository.deleteAddress(address.id)
+            syncRepository.deleteAddress(address.id)
             _events.value = HomeEvent.ShowMessage("اتحذف العنوان")
         }
     }
 
     fun renameAddress(address: MailAddress, newLabel: String?) {
         viewModelScope.launch {
-            repository.renameAddress(address.id, newLabel)
+            syncRepository.updateLabel(address.id, newLabel)
         }
     }
 
