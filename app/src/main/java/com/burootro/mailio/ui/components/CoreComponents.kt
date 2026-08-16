@@ -4,6 +4,7 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -19,6 +20,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.burootro.mailio.ui.theme.*
 
@@ -50,7 +52,6 @@ fun GlowButton(
             .scale(scale)
             .height(56.dp)
     ) {
-        // طبقة التوهج تحت الزرار
         if (enabled) {
             Box(
                 modifier = Modifier
@@ -178,7 +179,7 @@ fun GlassCard(
 @Composable
 fun PulsingDot(
     color: Color = SuccessGreen,
-    size: androidx.compose.ui.unit.Dp = 8.dp
+    size: Dp = 8.dp
 ) {
     val transition = rememberInfiniteTransition(label = "pulse")
 
