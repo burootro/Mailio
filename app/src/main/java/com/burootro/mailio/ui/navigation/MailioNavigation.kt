@@ -5,12 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -21,8 +16,8 @@ import com.burootro.mailio.ui.screens.home.HomeScreen
 import com.burootro.mailio.ui.screens.inbox.InboxScreen
 import com.burootro.mailio.ui.screens.message.MessageScreen
 import com.burootro.mailio.ui.screens.onboarding.OnboardingScreen
+import com.burootro.mailio.ui.screens.settings.SettingsScreen
 import com.burootro.mailio.ui.screens.splash.SplashScreen
-import com.burootro.mailio.ui.theme.TextSecondary
 
 object Routes {
     const val SPLASH = "splash"
@@ -181,20 +176,9 @@ fun MailioNavigation(
                 ) + fadeOut(tween(300))
             }
         ) {
-            PlaceholderScreen("الإعدادات — قريباً")
+            SettingsScreen(
+                onBack = { navController.popBackStack() }
+            )
         }
-    }
-}
-
-@Composable
-private fun PlaceholderScreen(text: String) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            color = TextSecondary
-        )
     }
 }
