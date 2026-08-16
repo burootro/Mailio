@@ -4,6 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -23,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.burootro.mailio.domain.model.MailAddress
@@ -49,7 +50,6 @@ fun AddressCard(
         label = "cardScale"
     )
 
-    // العداد التنازلي للعناوين المؤقتة
     var remaining by remember(address.id) {
         mutableStateOf(address.remainingMillis())
     }
@@ -91,7 +91,6 @@ fun AddressCard(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // الأفاتار
                 Box(
                     modifier = Modifier
                         .size(46.dp)
@@ -137,7 +136,9 @@ fun AddressCard(
 
                     Text(
                         text = address.email,
-                        style = EmailAddressStyle.copy(fontSize = MaterialTheme.typography.bodySmall.fontSize),
+                        style = EmailAddressStyle.copy(
+                            fontSize = MaterialTheme.typography.bodySmall.fontSize
+                        ),
                         color = TextTertiary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -146,7 +147,6 @@ fun AddressCard(
 
                 Spacer(Modifier.width(10.dp))
 
-                // عداد غير المقروء
                 AnimatedVisibility(
                     visible = hasUnread,
                     enter = fadeIn() + scaleIn(),
@@ -171,7 +171,6 @@ fun AddressCard(
 
             Spacer(Modifier.height(14.dp))
 
-            // الشريط السفلي
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -219,12 +218,6 @@ fun AddressCard(
 @Composable
 private fun CopyIconButton(onCopy: () -> Unit) {
     var copied by remember { mutableStateOf(false) }
-
-    val rotation by animateFloatAsState(
-        targetValue = if (copied) 360f else 0f,
-        animationSpec = tween(500),
-        label = "copyRotation"
-    )
 
     LaunchedEffect(copied) {
         if (copied) {
