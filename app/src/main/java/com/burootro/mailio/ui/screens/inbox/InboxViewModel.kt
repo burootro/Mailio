@@ -4,16 +4,16 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.burootro.mailio.data.repository.MailRepository
+import com.burootro.mailio.data.repository.SyncRepository
 import com.burootro.mailio.domain.model.MailAddress
 import com.burootro.mailio.domain.model.MailMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -42,10 +42,10 @@ sealed interface InboxEvent {
     data class ShowMessage(val text: String) : InboxEvent
 }
 
-@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class InboxViewModel @Inject constructor(
     private val repository: MailRepository,
+    private val syncRepository: SyncRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -53,7 +53,6 @@ class InboxViewModel @Inject constructor(
 
     private val _searchQuery = MutableStateFlow("")
     private val _isRefreshing = MutableStateFlow(false)
-
     private val addressFlow = MutableStateFlow<MailAddress?>(null)
 
     val uiState: StateFlow<InboxUiState> = combine(
@@ -81,6 +80,17 @@ class InboxViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             addressFlow.value = repository.getAddress(addressId)
+            syncRepository.syncAddressMessages(addressId)
+        }
+
+        // تحديث تلقائي كل 15 ثانية وإحنا في الصندوق
+        viewModelScope.launch {
+            while (true) {
+                delay(15_000)
+                if (!_isRefreshing.value) {
+                    syncRepository.syncAddressMessages(addressId)
+                }
+            }
         }
     }
 
@@ -115,9 +125,19 @@ class InboxViewModel @Inject constructor(
     fun refresh() {
         viewModelScope.launch {
             _isRefreshing.value = true
-            // هنا هيتم سحب الرسايل من السيرفر لما نربط الباك إند
-            kotlinx.coroutines.delay(800)
-            addressFlow.value = repository.getAddress(addressId)
+
+            syncRepository.syncAddressMessages(addressId).fold(
+                onSuccess = { count ->
+                    addressFlow.value = repository.getAddress(addressId)
+                    if (count == 0) {
+                        _events.value = InboxEvent.ShowMessage("مفيش رسايل جديدة")
+                    }
+                },
+                onFailure = {
+                    _events.value = InboxEvent.ShowMessage("مفيش اتصال بالسيرفر")
+                }
+            )
+
             _isRefreshing.value = false
         }
     }
