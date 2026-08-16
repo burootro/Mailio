@@ -15,6 +15,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.burootro.mailio.ui.screens.home.HomeScreen
 import com.burootro.mailio.ui.screens.onboarding.OnboardingScreen
 import com.burootro.mailio.ui.screens.splash.SplashScreen
 import com.burootro.mailio.ui.theme.TextSecondary
@@ -23,6 +24,8 @@ object Routes {
     const val SPLASH = "splash"
     const val ONBOARDING = "onboarding"
     const val HOME = "home"
+    const val INBOX = "inbox"
+    const val SETTINGS = "settings"
 }
 
 @Composable
@@ -73,21 +76,76 @@ fun MailioNavigation(
                     initialOffsetX = { it / 3 },
                     animationSpec = tween(450)
                 ) + fadeIn(tween(450))
+            },
+            exitTransition = {
+                slideOutHorizontally(
+                    targetOffsetX = { -it / 4 },
+                    animationSpec = tween(400)
+                ) + fadeOut(tween(250))
+            },
+            popEnterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { -it / 4 },
+                    animationSpec = tween(400)
+                ) + fadeIn(tween(400))
             }
         ) {
-            PlaceholderHome()
+            HomeScreen(
+                onAddressClick = { address ->
+                    navController.navigate("${Routes.INBOX}/${address.id}")
+                },
+                onSettingsClick = {
+                    navController.navigate(Routes.SETTINGS)
+                }
+            )
+        }
+
+        composable(
+            route = "${Routes.INBOX}/{addressId}",
+            enterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { it },
+                    animationSpec = tween(400)
+                ) + fadeIn(tween(300))
+            },
+            popExitTransition = {
+                slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(400)
+                ) + fadeOut(tween(300))
+            }
+        ) {
+            PlaceholderScreen("صندوق الوارد — قريباً")
+        }
+
+        composable(
+            route = Routes.SETTINGS,
+            enterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { it },
+                    animationSpec = tween(400)
+                ) + fadeIn(tween(300))
+            },
+            popExitTransition = {
+                slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(400)
+                ) + fadeOut(tween(300))
+            }
+        ) {
+            PlaceholderScreen("الإعدادات — قريباً")
         }
     }
 }
 
 @Composable
-private fun PlaceholderHome() {
+private fun PlaceholderScreen(text: String) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "الشاشة الرئيسية — قريباً",
+            text = text,
             color = TextSecondary
         )
     }
