@@ -16,12 +16,14 @@ import com.burootro.mailio.ui.screens.home.HomeScreen
 import com.burootro.mailio.ui.screens.inbox.InboxScreen
 import com.burootro.mailio.ui.screens.message.MessageScreen
 import com.burootro.mailio.ui.screens.onboarding.OnboardingScreen
+import com.burootro.mailio.ui.screens.restore.RestoreScreen
 import com.burootro.mailio.ui.screens.settings.SettingsScreen
 import com.burootro.mailio.ui.screens.splash.SplashScreen
 
 object Routes {
     const val SPLASH = "splash"
     const val ONBOARDING = "onboarding"
+    const val RESTORE = "restore"
     const val HOME = "home"
     const val INBOX = "inbox"
     const val MESSAGE = "message"
@@ -58,10 +60,44 @@ fun MailioNavigation(
                     targetOffsetX = { -it / 3 },
                     animationSpec = tween(450)
                 ) + fadeOut(tween(300))
+            },
+            popEnterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { -it / 4 },
+                    animationSpec = tween(400)
+                ) + fadeIn(tween(400))
             }
         ) {
             OnboardingScreen(
                 onFinished = {
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.ONBOARDING) { inclusive = true }
+                    }
+                },
+                onRestoreClick = {
+                    navController.navigate(Routes.RESTORE)
+                }
+            )
+        }
+
+        composable(
+            route = Routes.RESTORE,
+            enterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { it },
+                    animationSpec = tween(400)
+                ) + fadeIn(tween(300))
+            },
+            popExitTransition = {
+                slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(400)
+                ) + fadeOut(tween(300))
+            }
+        ) {
+            RestoreScreen(
+                onBack = { navController.popBackStack() },
+                onRestored = {
                     navController.navigate(Routes.HOME) {
                         popUpTo(Routes.ONBOARDING) { inclusive = true }
                     }
