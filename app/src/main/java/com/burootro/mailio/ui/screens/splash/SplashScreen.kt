@@ -20,22 +20,26 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.burootro.mailio.ui.theme.*
 import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(
-    onFinished: () -> Unit
+    onNavigateToOnboarding: () -> Unit,
+    onNavigateToHome: () -> Unit,
+    viewModel: SplashViewModel = hiltViewModel()
 ) {
+    val destination by viewModel.destination.collectAsStateWithLifecycle()
+
     var startAnimation by remember { mutableStateOf(false) }
     var showText by remember { mutableStateOf(false) }
+    var minTimePassed by remember { mutableStateOf(false) }
 
-    // دخول اللوجو
     val logoScale by animateFloatAsState(
         targetValue = if (startAnimation) 1f else 0.3f,
         animationSpec = spring(
@@ -51,7 +55,6 @@ fun SplashScreen(
         label = "logoAlpha"
     )
 
-    // الحلقات المتوسعة
     val ringTransition = rememberInfiniteTransition(label = "rings")
 
     val ring1 by ringTransition.animateFloat(
@@ -96,7 +99,6 @@ fun SplashScreen(
         label = "ring2Alpha"
     )
 
-    // تنفس التوهج
     val glowBreath by ringTransition.animateFloat(
         initialValue = 0.6f,
         targetValue = 1f,
@@ -111,8 +113,19 @@ fun SplashScreen(
         startAnimation = true
         delay(500)
         showText = true
-        delay(2200)
-        onFinished()
+        delay(1800)
+        minTimePassed = true
+    }
+
+    // ننتقل بس لما الأنميشن يخلص والوجهة تتحدد
+    LaunchedEffect(destination, minTimePassed) {
+        if (!minTimePassed) return@LaunchedEffect
+
+        when (destination) {
+            StartDestination.Home -> onNavigateToHome()
+            StartDestination.Onboarding -> onNavigateToOnboarding()
+            StartDestination.Loading -> Unit
+        }
     }
 
     Box(
@@ -121,7 +134,6 @@ fun SplashScreen(
             .background(DeepVoid),
         contentAlignment = Alignment.Center
     ) {
-        // توهج خلفي
         Box(
             modifier = Modifier
                 .size(360.dp)
@@ -135,7 +147,6 @@ fun SplashScreen(
         ) {
             Box(contentAlignment = Alignment.Center) {
 
-                // الحلقة الأولى
                 Box(
                     modifier = Modifier
                         .size(110.dp)
@@ -144,7 +155,6 @@ fun SplashScreen(
                         .border(1.5.dp, NeonCyan, RoundedCornerShape(50))
                 )
 
-                // الحلقة التانية
                 Box(
                     modifier = Modifier
                         .size(110.dp)
@@ -153,7 +163,6 @@ fun SplashScreen(
                         .border(1.5.dp, ElectricViolet, RoundedCornerShape(50))
                 )
 
-                // توهج اللوجو
                 Box(
                     modifier = Modifier
                         .size(110.dp)
@@ -164,7 +173,6 @@ fun SplashScreen(
                         .background(MailioGradients.primaryDiagonal)
                 )
 
-                // اللوجو
                 Box(
                     modifier = Modifier
                         .size(110.dp)
@@ -218,7 +226,6 @@ fun SplashScreen(
             }
         }
 
-        // نص سفلي
         AnimatedVisibility(
             visible = showText,
             enter = fadeIn(tween(1200)),
