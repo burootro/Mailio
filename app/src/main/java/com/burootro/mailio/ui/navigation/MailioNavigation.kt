@@ -44,8 +44,13 @@ fun MailioNavigation(
             exitTransition = { fadeOut(tween(600)) }
         ) {
             SplashScreen(
-                onFinished = {
+                onNavigateToOnboarding = {
                     navController.navigate(Routes.ONBOARDING) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                },
+                onNavigateToHome = {
+                    navController.navigate(Routes.HOME) {
                         popUpTo(Routes.SPLASH) { inclusive = true }
                     }
                 }
