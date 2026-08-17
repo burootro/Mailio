@@ -57,7 +57,8 @@ private val pages = listOf(
 
 @Composable
 fun OnboardingScreen(
-    onFinished: () -> Unit
+    onFinished: () -> Unit,
+    onRestoreClick: () -> Unit
 ) {
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val scope = rememberCoroutineScope()
@@ -78,7 +79,6 @@ fun OnboardingScreen(
 
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // زرار التخطي
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -166,7 +166,6 @@ fun OnboardingScreen(
                 }
             }
 
-            // المؤشر
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -203,7 +202,6 @@ fun OnboardingScreen(
                 }
             }
 
-            // الأزرار
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -212,7 +210,7 @@ fun OnboardingScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 GlowButton(
-                    text = if (isLastPage) "يلا نبدأ" else "التالي",
+                    text = if (isLastPage) "ابدأ حساب جديد" else "التالي",
                     onClick = {
                         if (isLastPage) {
                             onFinished()
@@ -225,7 +223,13 @@ fun OnboardingScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                if (pagerState.currentPage > 0) {
+                if (isLastPage) {
+                    OutlineGlowButton(
+                        text = "عندي مفتاح استرجاع",
+                        onClick = onRestoreClick,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                } else if (pagerState.currentPage > 0) {
                     OutlineGlowButton(
                         text = "رجوع",
                         onClick = {
