@@ -41,10 +41,8 @@ class HomeViewModel @Inject constructor(
 
     private val _isSyncing = MutableStateFlow(false)
     private val _isConnected = MutableStateFlow(true)
-    private val _domains = MutableStateFlow(listOf("mailio.app"))
 
-    val availableDomains: List<String>
-        get() = _domains.value
+    val availableDomains: List<String> = listOf("mailio.app")
 
     val uiState: StateFlow<HomeUiState> = combine(
         repository.observeAddresses(),
@@ -76,10 +74,10 @@ class HomeViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             prefs.getOrCreateDeviceId()
-            bootstrap()
+            // مفيش تسجيل تلقائي — التسجيل بيحصل من شاشة الترحيب بس
+            syncIfRegistered()
         }
 
-        // مزامنة دورية كل 20 ثانية
         viewModelScope.launch {
             while (true) {
                 delay(20_000)
@@ -89,23 +87,17 @@ class HomeViewModel @Inject constructor(
     }
 
     /**
-     * التسجيل على السيرفر أول مرة، وسحب البيانات
+     * المزامنة بتشتغل بس لو فيه مفتاح محفوظ
      */
-    private suspend fun bootstrap() {
+    private suspend fun syncIfRegistered() {
+        if (prefs.getRecoveryKey() == null) return
+
         _isSyncing.value = true
 
-        syncRepository.ensureRegistered().fold(
-            onSuccess = {
-                _isConnected.value = true
-                syncRepository.syncAddresses()
-                syncRepository.syncMessages()
-            },
-            onFailure = {
-                _isConnected.value = false
-                _events.value = HomeEvent.ShowMessage(
-                    "مفيش اتصال بالسيرفر — التطبيق شغال محلياً"
-                )
-            }
+        syncRepository.syncAddresses()
+        syncRepository.syncMessages().fold(
+            onSuccess = { _isConnected.value = true },
+            onFailure = { _isConnected.value = false }
         )
 
         _isSyncing.value = false
@@ -113,6 +105,8 @@ class HomeViewModel @Inject constructor(
 
     fun refresh() {
         viewModelScope.launch {
+            if (prefs.getRecoveryKey() == null) return@launch
+
             _isSyncing.value = true
 
             syncRepository.syncAddresses()
@@ -134,11 +128,9 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    /**
-     * مزامنة صامتة من غير رسايل للمستخدم
-     */
     private suspend fun quietSync() {
         if (_isSyncing.value) return
+        if (prefs.getRecoveryKey() == null) return
 
         syncRepository.syncMessages().fold(
             onSuccess = { _isConnected.value = true },
