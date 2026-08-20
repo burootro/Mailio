@@ -77,7 +77,6 @@ class HomeViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             prefs.getOrCreateDeviceId()
-            // بنصحّي السيرفر على طول عشان الطلب الجاي يبقى سريع
             syncRepository.wakeServer()
             syncIfRegistered()
         }
@@ -129,9 +128,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    /**
-     * مزامنة صامتة — بتطلق إشعار لكل رسالة جديدة
-     */
     private suspend fun quietSync() {
         if (_isSyncing.value) return
         if (prefs.getRecoveryKey() == null) return
@@ -162,6 +158,8 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _isCreating.value = true
 
+            val before = repository.observeAddresses().first().map { it.id }.toSet()
+
             syncRepository.createAddress(
                 localPart = localPart,
                 label = label,
@@ -176,14 +174,43 @@ class HomeViewModel @Inject constructor(
                     )
                 },
                 onFailure = { error ->
-                    _events.value = HomeEvent.ShowMessage(
-                        error.message ?: "حصل خطأ، جرب تاني"
-                    )
+                    // ممكن يكون اتعمل على السيرفر والرد اتأخر — نتأكد
+                    val recovered = recoverCreatedAddress(before)
+
+                    if (recovered != null) {
+                        _isConnected.value = true
+                        _events.value = HomeEvent.AddressCreated(
+                            addressId = recovered.id,
+                            email = recovered.email
+                        )
+                    } else {
+                        _events.value = HomeEvent.ShowMessage(
+                            error.message ?: "حصل خطأ، جرب تاني"
+                        )
+                    }
                 }
             )
 
             _isCreating.value = false
         }
+    }
+
+    /**
+     * بيسحب العناوين من السيرفر ويشوف لو فيه عنوان جديد اتعمل
+     */
+    private suspend fun recoverCreatedAddress(beforeIds: Set<String>): MailAddress? {
+        repeat(3) {
+            delay(2000)
+
+            val synced = syncRepository.syncAddresses()
+
+            if (synced.isSuccess) {
+                val after = repository.observeAddresses().first()
+                val newOne = after.firstOrNull { it.id !in beforeIds }
+                if (newOne != null) return newOne
+            }
+        }
+        return null
     }
 
     fun togglePin(address: MailAddress) {
