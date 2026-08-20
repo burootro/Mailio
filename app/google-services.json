@@ -12,7 +12,20 @@
           "package_name": "com.burootro.mailio"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "156972487714-s0c3pgqt9sf02kms240c4rcl2co230dd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.burootro.mailio",
+            "certificate_hash": "71369ae21c7b8918b1a5911ecf94552db855875a"
+          }
+        },
+        {
+          "client_id": "156972487714-aek25kqcuvp1mionka074mjo1e14bpcv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBxnuiL3IPZOYkNbjdK9_UxPO2DhO3qv1E"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "156972487714-aek25kqcuvp1mionka074mjo1e14bpcv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
