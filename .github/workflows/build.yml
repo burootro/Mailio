@@ -21,6 +21,8 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-disabled: true
 
       - name: Generate Gradle Wrapper
         run: gradle wrapper --gradle-version 8.9
@@ -28,7 +30,6 @@ jobs:
       - name: Grant execute permission
         run: chmod +x ./gradlew
 
-      # keystore ثابت — نفس البصمة كل مرة
       - name: Create keystore
         run: |
           keytool -genkeypair -v \
@@ -41,7 +42,6 @@ jobs:
             -validity 10000 \
             -dname "CN=Mailio, OU=Mobile, O=Burootro, L=Cairo, S=Cairo, C=EG"
 
-      # طباعة البصمة عشان نحطها في Firebase
       - name: Print SHA-1 fingerprint
         run: |
           echo "=================================================="
@@ -53,8 +53,12 @@ jobs:
             -alias mailio | grep -A 1 "SHA1:"
           echo "=================================================="
 
+      # تنظيف كامل قبل البناء — بيمنع تعارض ملفات Hilt المولّدة
+      - name: Clean build
+        run: ./gradlew clean --no-build-cache
+
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --no-build-cache --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
