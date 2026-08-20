@@ -28,6 +28,7 @@ class MailioPreferences @Inject constructor(
     private object Keys {
         val RECOVERY_KEY = stringPreferencesKey("recovery_key")
         val DEVICE_ID = stringPreferencesKey("device_id")
+        val PUSH_TOKEN = stringPreferencesKey("push_token")
         val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
         val KEY_BACKED_UP = booleanPreferencesKey("key_backed_up")
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
@@ -44,10 +45,6 @@ class MailioPreferences @Inject constructor(
     suspend fun getRecoveryKey(): String? =
         context.dataStore.data.first()[Keys.RECOVERY_KEY]
 
-    /**
-     * بيرجع المفتاح الموجود، ولو مفيش بيولّد واحد جديد ويحفظه.
-     * الصيغة: MLO-XXXX-XXXX-XXXX-XXXX
-     */
     suspend fun getOrCreateRecoveryKey(): String {
         val existing = getRecoveryKey()
         if (existing != null) return existing
@@ -66,6 +63,18 @@ class MailioPreferences @Inject constructor(
 
     suspend fun setKeyBackedUp(value: Boolean) {
         context.dataStore.edit { it[Keys.KEY_BACKED_UP] = value }
+    }
+
+    // ===== توكن الإشعارات =====
+
+    val pushToken: Flow<String?> = context.dataStore.data
+        .map { it[Keys.PUSH_TOKEN] }
+
+    suspend fun getPushToken(): String? =
+        context.dataStore.data.first()[Keys.PUSH_TOKEN]
+
+    suspend fun setPushToken(token: String) {
+        context.dataStore.edit { it[Keys.PUSH_TOKEN] = token }
     }
 
     // ===== معرّف الجهاز =====
@@ -100,7 +109,6 @@ class MailioPreferences @Inject constructor(
         context.dataStore.edit { it[Keys.NOTIFICATIONS_ENABLED] = value }
     }
 
-    /** 0 = من غير حذف تلقائي */
     val autoDeleteDays: Flow<Long> = context.dataStore.data
         .map { it[Keys.AUTO_DELETE_DAYS] ?: 14L }
 
@@ -134,10 +142,6 @@ class MailioPreferences @Inject constructor(
 
         private const val ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
-        /**
-         * مفتاح بصيغة MLO-XXXX-XXXX-XXXX-XXXX
-         * الحروف المتشابهة (I, O, 0, 1) مستبعدة عشان مفيش لبس وقت الكتابة
-         */
         fun generateRecoveryKey(): String {
             val random = SecureRandom()
             val groups = (1..4).map {
