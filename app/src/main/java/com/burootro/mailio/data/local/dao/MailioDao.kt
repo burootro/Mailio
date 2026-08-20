@@ -4,7 +4,6 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Transaction
 import androidx.room.Update
 import com.burootro.mailio.data.local.entity.AddressEntity
 import com.burootro.mailio.data.local.entity.AttachmentEntity
@@ -68,6 +67,9 @@ interface MessageDao {
 
     @Query("SELECT * FROM messages WHERE addressId = :addressId ORDER BY receivedAt DESC")
     fun observeByAddress(addressId: String): Flow<List<MessageEntity>>
+
+    @Query("SELECT * FROM messages WHERE addressId = :addressId")
+    suspend fun getAllForAddress(addressId: String): List<MessageEntity>
 
     @Query("SELECT * FROM messages ORDER BY receivedAt DESC LIMIT :limit")
     fun observeRecent(limit: Int = 100): Flow<List<MessageEntity>>
