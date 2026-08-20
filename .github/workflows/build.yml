@@ -21,8 +21,6 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          cache-disabled: true
 
       - name: Generate Gradle Wrapper
         run: gradle wrapper --gradle-version 8.9
@@ -30,17 +28,24 @@ jobs:
       - name: Grant execute permission
         run: chmod +x ./gradlew
 
-      - name: Create keystore
+      # لو فيه keystore محفوظ نستخدمه، لو مفيش نعمل واحد جديد
+      - name: Setup keystore
         run: |
-          keytool -genkeypair -v \
-            -keystore app/mailio.keystore \
-            -storepass mailio2026 \
-            -keypass mailio2026 \
-            -alias mailio \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -dname "CN=Mailio, OU=Mobile, O=Burootro, L=Cairo, S=Cairo, C=EG"
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "استخدام الـ keystore المحفوظ"
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/mailio.keystore
+          else
+            echo "توليد keystore جديد"
+            keytool -genkeypair -v \
+              -keystore app/mailio.keystore \
+              -storepass mailio2026 \
+              -keypass mailio2026 \
+              -alias mailio \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -dname "CN=Mailio, OU=Mobile, O=Burootro, L=Cairo, S=Cairo, C=EG"
+          fi
 
       - name: Print SHA-1 fingerprint
         run: |
@@ -53,12 +58,18 @@ jobs:
             -alias mailio | grep -A 1 "SHA1:"
           echo "=================================================="
 
-      # تنظيف كامل قبل البناء — بيمنع تعارض ملفات Hilt المولّدة
-      - name: Clean build
-        run: ./gradlew clean --no-build-cache
+      # طباعة الـ keystore كنص — انسخه وحطه في GitHub Secrets
+      - name: Print keystore for saving
+        run: |
+          echo "=================================================="
+          echo "        KEYSTORE BASE64 - انسخ اللي تحت ده"
+          echo "=================================================="
+          base64 -w 0 app/mailio.keystore
+          echo ""
+          echo "=================================================="
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-build-cache --stacktrace
+        run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
