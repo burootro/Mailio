@@ -14,11 +14,13 @@ import javax.inject.Inject
 
 data class SignInUiState(
     val isLoading: Boolean = false,
+    val isSkipping: Boolean = false,
     val error: String? = null
 )
 
 sealed interface SignInEvent {
     data class Success(val isNew: Boolean, val name: String?) : SignInEvent
+    data object GuestReady : SignInEvent
 }
 
 @HiltViewModel
@@ -34,7 +36,6 @@ class SignInViewModel @Inject constructor(
     val events: StateFlow<SignInEvent?> = _events.asStateFlow()
 
     init {
-        // بنصحّي السيرفر بدري عشان الدخول يبقى سريع
         viewModelScope.launch {
             syncRepository.wakeServer()
         }
@@ -48,9 +49,7 @@ class SignInViewModel @Inject constructor(
 
             authRepository.signInWithGoogle(data).fold(
                 onSuccess = { result ->
-                    _uiState.value = SignInUiState(isLoading = false)
-
-                    // نسجّل توكن الإشعارات بعد الدخول
+                    _uiState.value = SignInUiState()
                     syncRepository.registerPushToken()
 
                     _events.value = SignInEvent.Success(
@@ -60,7 +59,6 @@ class SignInViewModel @Inject constructor(
                 },
                 onFailure = { error ->
                     _uiState.value = SignInUiState(
-                        isLoading = false,
                         error = error.message ?: "فشل تسجيل الدخول"
                     )
                 }
@@ -68,8 +66,32 @@ class SignInViewModel @Inject constructor(
         }
     }
 
+    /**
+     * الدخول كضيف — بيعمل حساب مجهول
+     */
+    fun continueAsGuest() {
+        if (_uiState.value.isSkipping) return
+
+        viewModelScope.launch {
+            _uiState.value = SignInUiState(isSkipping = true)
+
+            syncRepository.ensureRegistered().fold(
+                onSuccess = {
+                    _uiState.value = SignInUiState()
+                    syncRepository.registerPushToken()
+                    _events.value = SignInEvent.GuestReady
+                },
+                onFailure = { error ->
+                    _uiState.value = SignInUiState(
+                        error = error.message ?: "مفيش اتصال بالسيرفر"
+                    )
+                }
+            )
+        }
+    }
+
     fun onSignInCancelled() {
-        _uiState.value = SignInUiState(isLoading = false)
+        _uiState.value = SignInUiState()
     }
 
     fun clearError() {
