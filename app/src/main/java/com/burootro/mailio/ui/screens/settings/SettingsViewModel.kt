@@ -1,116 +1,101 @@
-package com.burootro.mailio.ui.screens.settings
+package com.burootro.mailio.ui.screens.signin
 
+import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.burootro.mailio.data.prefs.MailioPreferences
 import com.burootro.mailio.data.repository.AuthRepository
-import com.burootro.mailio.data.repository.MailRepository
+import com.burootro.mailio.data.repository.SyncRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class SettingsUiState(
-    val googleEmail: String? = null,
-    val googleName: String? = null,
-    val googlePhoto: String? = null,
-    val notificationsEnabled: Boolean = true,
-    val autoDeleteDays: Long = 14L,
-    val addressCount: Int = 0,
-    val isLoading: Boolean = true
+data class SignInUiState(
+    val isLoading: Boolean = false,
+    val isSkipping: Boolean = false,
+    val error: String? = null
 )
 
-sealed interface SettingsEvent {
-    data class ShowMessage(val text: String) : SettingsEvent
-    data object SignedOut : SettingsEvent
+sealed interface SignInEvent {
+    data class Success(val isNew: Boolean, val name: String?) : SignInEvent
+    data object GuestReady : SignInEvent
 }
 
 @HiltViewModel
-class SettingsViewModel @Inject constructor(
-    private val prefs: MailioPreferences,
-    private val repository: MailRepository,
-    private val authRepository: AuthRepository
+class SignInViewModel @Inject constructor(
+    private val authRepository: AuthRepository,
+    private val syncRepository: SyncRepository
 ) : ViewModel() {
 
-    val uiState: StateFlow<SettingsUiState> = combine(
-        prefs.googleEmail,
-        prefs.googleName,
-        prefs.googlePhoto,
-        prefs.notificationsEnabled,
-        prefs.autoDeleteDays,
-        repository.observeAddressCount()
-    ) { values ->
-        SettingsUiState(
-            googleEmail = values[0] as String?,
-            googleName = values[1] as String?,
-            googlePhoto = values[2] as String?,
-            notificationsEnabled = values[3] as Boolean,
-            autoDeleteDays = values[4] as Long,
-            addressCount = values[5] as Int,
-            isLoading = false
-        )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = SettingsUiState()
-    )
+    private val _uiState = MutableStateFlow(SignInUiState())
+    val uiState: StateFlow<SignInUiState> = _uiState.asStateFlow()
 
-    private val _events = MutableStateFlow<SettingsEvent?>(null)
-    val events: StateFlow<SettingsEvent?> = _events.asStateFlow()
+    private val _events = MutableStateFlow<SignInEvent?>(null)
+    val events: StateFlow<SignInEvent?> = _events.asStateFlow()
 
-    private val _isSigningOut = MutableStateFlow(false)
-    val isSigningOut: StateFlow<Boolean> = _isSigningOut.asStateFlow()
-
-    fun setNotifications(enabled: Boolean) {
+    init {
         viewModelScope.launch {
-            prefs.setNotificationsEnabled(enabled)
+            syncRepository.wakeServer()
         }
     }
 
-    fun setAutoDeleteDays(days: Long) {
+    fun getSignInIntent(): Intent = authRepository.getSignInIntent()
+
+    fun onSignInResult(data: Intent?) {
         viewModelScope.launch {
-            prefs.setAutoDeleteDays(days)
-            _events.value = SettingsEvent.ShowMessage(
-                if (days <= 0) "اتوقف الحذف التلقائي"
-                else "الرسايل هتتحذف بعد $days يوم"
-            )
-        }
-    }
+            _uiState.value = SignInUiState(isLoading = true)
 
-    fun runCleanupNow() {
-        viewModelScope.launch {
-            val days = uiState.value.autoDeleteDays
-            if (days <= 0) {
-                _events.value = SettingsEvent.ShowMessage("الحذف التلقائي متوقف")
-                return@launch
-            }
-            repository.runAutoCleanup(days)
-            _events.value = SettingsEvent.ShowMessage("اتنضفت الرسايل القديمة")
-        }
-    }
+            authRepository.signInWithGoogle(data).fold(
+                onSuccess = { result ->
+                    _uiState.value = SignInUiState()
+                    syncRepository.registerPushToken()
 
-    fun signOut() {
-        if (_isSigningOut.value) return
-
-        viewModelScope.launch {
-            _isSigningOut.value = true
-
-            authRepository.signOut().fold(
-                onSuccess = {
-                    _events.value = SettingsEvent.SignedOut
+                    _events.value = SignInEvent.Success(
+                        isNew = result.isNew,
+                        name = result.name
+                    )
                 },
-                onFailure = {
-                    _events.value = SettingsEvent.ShowMessage("فشل تسجيل الخروج")
+                onFailure = { error ->
+                    _uiState.value = SignInUiState(
+                        error = error.message ?: "فشل تسجيل الدخول"
+                    )
                 }
             )
-
-            _isSigningOut.value = false
         }
+    }
+
+    /**
+     * الدخول كضيف — بيعمل حساب مجهول بمفتاح استرجاع
+     */
+    fun continueAsGuest() {
+        if (_uiState.value.isSkipping) return
+
+        viewModelScope.launch {
+            _uiState.value = SignInUiState(isSkipping = true)
+
+            syncRepository.ensureRegistered().fold(
+                onSuccess = {
+                    _uiState.value = SignInUiState()
+                    syncRepository.registerPushToken()
+                    _events.value = SignInEvent.GuestReady
+                },
+                onFailure = { error ->
+                    _uiState.value = SignInUiState(
+                        error = error.message ?: "مفيش اتصال بالسيرفر"
+                    )
+                }
+            )
+        }
+    }
+
+    fun onSignInCancelled() {
+        _uiState.value = SignInUiState()
+    }
+
+    fun clearError() {
+        _uiState.value = _uiState.value.copy(error = null)
     }
 
     fun consumeEvent() {
