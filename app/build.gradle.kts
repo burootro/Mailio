@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -24,7 +25,6 @@ android {
     buildTypes {
         debug {
             isMinifyEnabled = false
-            applicationIdSuffix = ".debug"
         }
         release {
             isMinifyEnabled = true
@@ -82,16 +82,20 @@ dependencies {
     // Navigation
     implementation(libs.androidx.navigation.compose)
 
-    // Room (تخزين محلي للإيميلات والرسايل)
+    // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    // DataStore (الإعدادات والـ Recovery Key)
+    // DataStore
     implementation(libs.androidx.datastore.preferences)
 
-    // WorkManager (مزامنة في الخلفية)
+    // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
+
+    // Firebase (الإشعارات)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
     // Networking
     implementation(libs.retrofit)
@@ -101,13 +105,13 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.android)
 
-    // Hilt (حقن الاعتماديات)
+    // Hilt
     implementation(libs.hilt.android)
     implementation(libs.hilt.navigation.compose)
     implementation(libs.hilt.work)
     ksp(libs.hilt.compiler)
     ksp(libs.hilt.work.compiler)
 
-    // Coil (الصور)
+    // Coil
     implementation(libs.coil.compose)
 }
