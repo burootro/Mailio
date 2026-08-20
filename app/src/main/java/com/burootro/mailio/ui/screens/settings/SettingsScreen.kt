@@ -1,10 +1,7 @@
 package com.burootro.mailio.ui.screens.settings
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,9 +13,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.AutoDelete
 import androidx.compose.material.icons.rounded.CleaningServices
-import androidx.compose.material.icons.rounded.DeleteForever
+import androidx.compose.material.icons.rounded.Logout
 import androidx.compose.material.icons.rounded.Mail
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,29 +24,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.burootro.mailio.ui.components.OutlineGlowButton
 import com.burootro.mailio.ui.theme.*
-import kotlinx.coroutines.launch
 
 private val autoDeleteOptions = listOf(0L, 7L, 14L, 30L)
 
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onSignedOut: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val isSigningOut by viewModel.isSigningOut.collectAsStateWithLifecycle()
     val event by viewModel.events.collectAsStateWithLifecycle()
 
-    val context = LocalContextSafe()
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-
-    var showWipeConfirm by remember { mutableStateOf(false) }
+    var showSignOutConfirm by remember { mutableStateOf(false) }
 
     LaunchedEffect(event) {
         when (val e = event) {
@@ -56,9 +55,9 @@ fun SettingsScreen(
                 snackbarHostState.showSnackbar(e.text)
                 viewModel.consumeEvent()
             }
-            SettingsEvent.DataWiped -> {
+            SettingsEvent.SignedOut -> {
                 viewModel.consumeEvent()
-                onBack()
+                onSignedOut()
             }
             null -> Unit
         }
@@ -121,17 +120,11 @@ fun SettingsScreen(
 
                 Spacer(Modifier.height(6.dp))
 
-                // مفتاح الاسترجاع
-                RecoveryKeyCard(
-                    recoveryKey = state.recoveryKey,
-                    isBackedUp = state.isKeyBackedUp,
-                    onCopy = {
-                        copyToClipboard(context, state.recoveryKey)
-                        scope.launch {
-                            snackbarHostState.showSnackbar("اتنسخ المفتاح")
-                        }
-                    },
-                    onMarkBackedUp = { viewModel.markKeyBackedUp() }
+                // بطاقة الحساب
+                AccountCard(
+                    email = state.googleEmail,
+                    name = state.googleName,
+                    photo = state.googlePhoto
                 )
 
                 Spacer(Modifier.height(26.dp))
@@ -166,7 +159,7 @@ fun SettingsScreen(
                 SwitchRow(
                     icon = Icons.Rounded.Notifications,
                     title = "تنبيه بالرسايل الجديدة",
-                    subtitle = "إشعار على طول لما توصل رسالة",
+                    subtitle = "إشعار فوري لما توصل رسالة",
                     checked = state.notificationsEnabled,
                     onCheckedChange = viewModel::setNotifications
                 )
@@ -214,17 +207,14 @@ fun SettingsScreen(
 
                 Spacer(Modifier.height(30.dp))
 
-                // منطقة الخطر
-                SectionTitle("منطقة الخطر", tint = ErrorRose)
-                Spacer(Modifier.height(10.dp))
-
+                // تسجيل الخروج
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(18.dp))
                         .background(ErrorRose.copy(alpha = 0.09f))
                         .border(1.dp, ErrorRose.copy(alpha = 0.28f), RoundedCornerShape(18.dp))
-                        .clickable { showWipeConfirm = true }
+                        .clickable(enabled = !isSigningOut) { showSignOutConfirm = true }
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -235,25 +225,33 @@ fun SettingsScreen(
                             .background(ErrorRose.copy(alpha = 0.16f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.DeleteForever,
-                            contentDescription = null,
-                            tint = ErrorRose,
-                            modifier = Modifier.size(19.dp)
-                        )
+                        if (isSigningOut) {
+                            CircularProgressIndicator(
+                                color = ErrorRose,
+                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Rounded.Logout,
+                                contentDescription = null,
+                                tint = ErrorRose,
+                                modifier = Modifier.size(19.dp)
+                            )
+                        }
                     }
 
                     Spacer(Modifier.width(14.dp))
 
                     Column {
                         Text(
-                            text = "مسح كل البيانات",
+                            text = "تسجيل الخروج",
                             style = MaterialTheme.typography.titleMedium,
                             color = ErrorRose
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
-                            text = "العناوين والرسايل والمفتاح — كله",
+                            text = "هتقدر ترجع بنفس حساب جوجل",
                             style = MaterialTheme.typography.bodySmall,
                             color = TextTertiary
                         )
@@ -273,14 +271,78 @@ fun SettingsScreen(
         }
     }
 
-    if (showWipeConfirm) {
-        WipeConfirmDialog(
-            onDismiss = { showWipeConfirm = false },
+    if (showSignOutConfirm) {
+        SignOutDialog(
+            onDismiss = { showSignOutConfirm = false },
             onConfirm = {
-                showWipeConfirm = false
-                viewModel.wipeEverything()
+                showSignOutConfirm = false
+                viewModel.signOut()
             }
         )
+    }
+}
+
+@Composable
+private fun AccountCard(
+    email: String?,
+    name: String?,
+    photo: String?
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp))
+            .background(CardSurface)
+            .background(MailioGradients.cardSheen)
+            .border(1.dp, NeonCyan.copy(alpha = 0.25f), RoundedCornerShape(22.dp))
+            .padding(18.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(54.dp)
+                .clip(RoundedCornerShape(50))
+                .background(MailioGradients.cyanSoft),
+            contentAlignment = Alignment.Center
+        ) {
+            if (photo != null) {
+                AsyncImage(
+                    model = photo,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(54.dp)
+                        .clip(RoundedCornerShape(50))
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Rounded.Person,
+                    contentDescription = null,
+                    tint = CyanGlow,
+                    modifier = Modifier.size(26.dp)
+                )
+            }
+        }
+
+        Spacer(Modifier.width(14.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = name ?: "حسابك",
+                style = MaterialTheme.typography.titleLarge,
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(Modifier.height(3.dp))
+            Text(
+                text = email ?: "مسجّل بجوجل",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextTertiary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 
@@ -444,7 +506,7 @@ private fun DayChip(
 }
 
 @Composable
-private fun WipeConfirmDialog(
+private fun SignOutDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
@@ -454,14 +516,14 @@ private fun WipeConfirmDialog(
         shape = RoundedCornerShape(24.dp),
         title = {
             Text(
-                text = "مسح كل حاجة؟",
+                text = "تسجيل الخروج؟",
                 style = MaterialTheme.typography.headlineSmall,
-                color = ErrorRose
+                color = TextPrimary
             )
         },
         text = {
             Text(
-                text = "كل العناوين والرسايل ومفتاح الاسترجاع هيتمسحوا نهائياً. لو مش حافظ المفتاح في مكان تاني، مش هتقدر ترجع أي حاجة.",
+                text = "هيتمسح كل حاجة من الجهاز ده. عناوينك ورسايلك محفوظة على حسابك، وهترجع أول ما تسجّل دخول تاني.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary
             )
@@ -477,8 +539,8 @@ private fun WipeConfirmDialog(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "امسح الكل",
-                    style = MaterialTheme.typography.labelMedium,
+                    text = "خروج",
+                    style = MaterialTheme.typography.labelLarge,
                     color = TextPrimary
                 )
             }
@@ -491,13 +553,4 @@ private fun WipeConfirmDialog(
             )
         }
     )
-}
-
-@Composable
-private fun LocalContextSafe(): Context =
-    androidx.compose.ui.platform.LocalContext.current
-
-private fun copyToClipboard(context: Context, text: String) {
-    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    clipboard.setPrimaryClip(ClipData.newPlainText("recovery_key", text))
 }
