@@ -83,7 +83,6 @@ class InboxViewModel @Inject constructor(
             syncRepository.syncAddressMessages(addressId)
         }
 
-        // تحديث تلقائي كل 15 ثانية وإحنا في الصندوق
         viewModelScope.launch {
             while (true) {
                 delay(15_000)
@@ -115,9 +114,12 @@ class InboxViewModel @Inject constructor(
         }
     }
 
+    /**
+     * الحذف بقى من السيرفر كمان — عشان الرسالة متجيش تاني
+     */
     fun deleteMessage(message: MailMessage) {
         viewModelScope.launch {
-            repository.deleteMessage(message.id)
+            syncRepository.deleteMessage(message.id)
             _events.value = InboxEvent.ShowMessage("اتحذفت الرسالة")
         }
     }
