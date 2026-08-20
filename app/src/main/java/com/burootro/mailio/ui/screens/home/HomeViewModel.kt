@@ -7,6 +7,7 @@ import com.burootro.mailio.data.repository.MailRepository
 import com.burootro.mailio.data.repository.SyncRepository
 import com.burootro.mailio.domain.model.AddressLifetime
 import com.burootro.mailio.domain.model.MailAddress
+import com.burootro.mailio.notifications.MailioNotifier
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -29,7 +31,6 @@ data class HomeUiState(
 
 sealed interface HomeEvent {
     data class ShowMessage(val text: String) : HomeEvent
-    /** بيحمل الـ id عشان النافيجيشن يفتح الصندوق على طول */
     data class AddressCreated(val addressId: String, val email: String) : HomeEvent
 }
 
@@ -37,6 +38,7 @@ sealed interface HomeEvent {
 class HomeViewModel @Inject constructor(
     private val repository: MailRepository,
     private val syncRepository: SyncRepository,
+    private val notifier: MailioNotifier,
     private val prefs: MailioPreferences
 ) : ViewModel() {
 
@@ -75,6 +77,8 @@ class HomeViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             prefs.getOrCreateDeviceId()
+            // بنصحّي السيرفر على طول عشان الطلب الجاي يبقى سريع
+            syncRepository.wakeServer()
             syncIfRegistered()
         }
 
@@ -108,11 +112,11 @@ class HomeViewModel @Inject constructor(
 
             syncRepository.syncAddresses()
             syncRepository.syncMessages().fold(
-                onSuccess = { result ->
+                onSuccess = { newMessages ->
                     _isConnected.value = true
-                    if (result.newMessages > 0) {
+                    if (newMessages.isNotEmpty()) {
                         _events.value = HomeEvent.ShowMessage(
-                            "وصل ${result.newMessages} رسالة جديدة"
+                            "وصل ${newMessages.size} رسالة جديدة"
                         )
                     }
                 },
@@ -125,12 +129,24 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * مزامنة صامتة — بتطلق إشعار لكل رسالة جديدة
+     */
     private suspend fun quietSync() {
         if (_isSyncing.value) return
         if (prefs.getRecoveryKey() == null) return
 
+        val notificationsOn = prefs.notificationsEnabled.first()
+
         syncRepository.syncMessages().fold(
-            onSuccess = { _isConnected.value = true },
+            onSuccess = { newMessages ->
+                _isConnected.value = true
+                if (notificationsOn) {
+                    newMessages.forEach { message ->
+                        notifier.notifyNewMessage(message)
+                    }
+                }
+            },
             onFailure = { _isConnected.value = false }
         )
     }
