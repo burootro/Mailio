@@ -7,15 +7,19 @@ import com.burootro.mailio.data.mapper.toEntity
 import com.burootro.mailio.data.prefs.MailioPreferences
 import com.burootro.mailio.data.remote.MailioApi
 import com.burootro.mailio.data.remote.dto.CreateAddressRequest
+import com.burootro.mailio.data.remote.dto.PushTokenRequest
 import com.burootro.mailio.data.remote.dto.RestoreRequest
 import com.burootro.mailio.data.remote.dto.UpdateLabelRequest
 import com.burootro.mailio.domain.model.AddressLifetime
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.resume
 
 data class SyncResult(
     val newMessages: Int = 0,
@@ -27,6 +31,14 @@ data class CreatedAddress(
     val email: String
 )
 
+data class NewMessageInfo(
+    val id: String,
+    val addressId: String,
+    val fromName: String,
+    val subject: String,
+    val preview: String
+)
+
 @Singleton
 class SyncRepository @Inject constructor(
     private val api: MailioApi,
@@ -35,20 +47,46 @@ class SyncRepository @Inject constructor(
     private val prefs: MailioPreferences
 ) {
 
-    /**
-     * بيصحّي السيرفر النايم — بينادى أول ما التطبيق يفتح
-     */
     suspend fun wakeServer() = withContext(Dispatchers.IO) {
         try {
             api.health()
         } catch (e: Exception) {
-            // مش مهم لو فشل، الغرض بس نبعت أول طلب يصحيه
+            // مش مهم
         }
     }
 
     /**
-     * بيعيد المحاولة لو السيرفر نايم أو الاتصال فشل
+     * تسجيل توكن الإشعارات على السيرفر
      */
+    suspend fun registerPushToken(): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            if (prefs.getRecoveryKey() == null) {
+                return@withContext Result.success(Unit)
+            }
+
+            val token = prefs.getPushToken() ?: fetchFirebaseToken()
+
+            if (token.isNullOrBlank()) {
+                return@withContext Result.failure(Exception("مفيش توكن"))
+            }
+
+            prefs.setPushToken(token)
+            api.registerPushToken(PushTokenRequest(token))
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private suspend fun fetchFirebaseToken(): String? =
+        suspendCancellableCoroutine { cont ->
+            FirebaseMessaging.getInstance().token
+                .addOnCompleteListener { task ->
+                    cont.resume(if (task.isSuccessful) task.result else null)
+                }
+        }
+
     private suspend fun <T> retrying(
         attempts: Int = 3,
         block: suspend () -> T
@@ -121,9 +159,6 @@ class SyncRepository @Inject constructor(
             }
         }
 
-    /**
-     * إنشاء عنوان — مع إعادة محاولة لو السيرفر نايم
-     */
     suspend fun createAddress(
         localPart: String?,
         label: String?,
@@ -194,9 +229,6 @@ class SyncRepository @Inject constructor(
             Result.success(Unit)
         }
 
-    /**
-     * بيرجع الرسايل الجديدة عشان الإشعارات تعرف تنبّه
-     */
     suspend fun syncMessages(): Result<List<NewMessageInfo>> = withContext(Dispatchers.IO) {
         try {
             val since = prefs.lastSyncAt.first()
@@ -312,14 +344,3 @@ class SyncRepository @Inject constructor(
         }
     }
 }
-
-/**
- * بيانات الرسالة الجديدة — للإشعارات
- */
-data class NewMessageInfo(
-    val id: String,
-    val addressId: String,
-    val fromName: String,
-    val subject: String,
-    val preview: String
-)
