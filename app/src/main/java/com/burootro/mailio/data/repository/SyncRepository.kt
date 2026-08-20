@@ -29,9 +29,6 @@ class SyncRepository @Inject constructor(
     private val prefs: MailioPreferences
 ) {
 
-    /**
-     * تسجيل مستخدم جديد على السيرفر والحصول على مفتاح
-     */
     suspend fun ensureRegistered(): Result<String> = withContext(Dispatchers.IO) {
         try {
             val existing = prefs.getRecoveryKey()
@@ -52,9 +49,6 @@ class SyncRepository @Inject constructor(
         }
     }
 
-    /**
-     * استرجاع حساب بمفتاح موجود
-     */
     suspend fun restoreAccount(recoveryKey: String): Result<SyncResult> =
         withContext(Dispatchers.IO) {
             try {
@@ -87,15 +81,12 @@ class SyncRepository @Inject constructor(
             }
         }
 
-    /**
-     * إنشاء عنوان على السيرفر وحفظه محلياً
-     */
     suspend fun createAddress(
         localPart: String?,
         label: String?,
         lifetime: AddressLifetime,
         domain: String?
-    ): Result<String> = withContext(Dispatchers.IO) {
+    ): Result<CreatedAddress> = withContext(Dispatchers.IO) {
         try {
             val response = api.createAddress(
                 CreateAddressRequest(
@@ -107,20 +98,23 @@ class SyncRepository @Inject constructor(
             )
 
             addressDao.insert(response.address.toEntity())
-            Result.success(response.address.email)
+
+            Result.success(
+                CreatedAddress(
+                    id = response.address.id,
+                    email = response.address.email
+                )
+            )
         } catch (e: Exception) {
             Result.failure(mapError(e))
         }
     }
 
-    /**
-     * حذف عنوان
-     */
     suspend fun deleteAddress(addressId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             api.deleteAddress(addressId)
         } catch (e: Exception) {
-            // نكمل الحذف المحلي حتى لو السيرفر فشل
+            // نكمل الحذف المحلي
         }
 
         messageDao.deleteByAddress(addressId)
@@ -129,8 +123,25 @@ class SyncRepository @Inject constructor(
     }
 
     /**
-     * تغيير اسم العنوان
+     * حذف رسالة من السيرفر والمحلي معاً
+     * ده بيمنعها ترجع مع المزامنة الجاية
      */
+    suspend fun deleteMessage(messageId: String): Result<Unit> = withContext(Dispatchers.IO) {
+        val message = messageDao.getById(messageId)
+
+        try {
+            api.deleteMessage(messageId)
+        } catch (e: Exception) {
+            // نكمل الحذف المحلي حتى لو السيرفر فشل
+        }
+
+        messageDao.deleteById(messageId)
+
+        message?.let { refreshUnreadCount(it.addressId) }
+
+        Result.success(Unit)
+    }
+
     suspend fun updateLabel(addressId: String, label: String?): Result<Unit> =
         withContext(Dispatchers.IO) {
             try {
@@ -143,9 +154,6 @@ class SyncRepository @Inject constructor(
             Result.success(Unit)
         }
 
-    /**
-     * سحب الرسايل الجديدة عبر كل العناوين
-     */
     suspend fun syncMessages(): Result<SyncResult> = withContext(Dispatchers.IO) {
         try {
             val since = prefs.lastSyncAt.first()
@@ -177,9 +185,6 @@ class SyncRepository @Inject constructor(
         }
     }
 
-    /**
-     * سحب رسايل عنوان واحد
-     */
     suspend fun syncAddressMessages(addressId: String): Result<Int> =
         withContext(Dispatchers.IO) {
             try {
@@ -205,9 +210,6 @@ class SyncRepository @Inject constructor(
             }
         }
 
-    /**
-     * مزامنة قائمة العناوين من السيرفر
-     */
     suspend fun syncAddresses(): Result<Int> = withContext(Dispatchers.IO) {
         try {
             val response = api.listAddresses()
@@ -253,3 +255,11 @@ class SyncRepository @Inject constructor(
         }
     }
 }
+
+/**
+ * نتيجة إنشاء عنوان — بنحتاج الـ id عشان نفتح صندوق الوارد على طول
+ */
+data class CreatedAddress(
+    val id: String,
+    val email: String
+)
