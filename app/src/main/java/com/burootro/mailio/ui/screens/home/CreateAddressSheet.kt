@@ -1,7 +1,12 @@
 package com.burootro.mailio.ui.screens.home
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,7 +16,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Casino
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,10 +39,11 @@ fun CreateAddressSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    var manualMode by remember { mutableStateOf(false) }
     var localPart by remember { mutableStateOf("") }
     var label by remember { mutableStateOf("") }
     var selectedLifetime by remember { mutableStateOf(AddressLifetime.PERMANENT) }
-    var selectedDomain by remember { mutableStateOf(domains.first()) }
+    val selectedDomain = domains.first()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -67,167 +74,204 @@ fun CreateAddressSheet(
                 color = TextPrimary
             )
 
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(20.dp))
 
-            Text(
-                text = "سيبه فاضي وهنولّدلك اسم عشوائي",
-                style = MaterialTheme.typography.bodySmall,
-                color = TextTertiary
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            // خانة الاسم
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                OutlinedTextField(
-                    value = localPart,
-                    onValueChange = { input ->
-                        localPart = input.lowercase().filter {
-                            it.isLetterOrDigit() || it == '.' || it == '_' || it == '-'
-                        }.take(32)
+            // ===== الزرار السريع: عشوائي =====
+            if (!manualMode) {
+                GlowButton(
+                    text = if (isCreating) "بيتعمل..." else "إيميل عشوائي فوراً",
+                    enabled = !isCreating,
+                    onClick = {
+                        onCreate(null, null, AddressLifetime.PERMANENT, selectedDomain)
                     },
-                    modifier = Modifier.weight(1f),
-                    placeholder = {
-                        Text(
-                            text = "اسم العنوان",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextDisabled
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Rounded.Bolt,
+                            contentDescription = null,
+                            tint = DeepVoid,
+                            modifier = Modifier.size(19.dp)
                         )
                     },
-                    singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.None
-                    ),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary,
-                        focusedBorderColor = NeonCyan,
-                        unfocusedBorderColor = BorderSubtle,
-                        cursorColor = NeonCyan,
-                        focusedContainerColor = CardSurface,
-                        unfocusedContainerColor = CardSurface
-                    )
+                    modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.height(10.dp))
 
-                Box(
+                Row(
                     modifier = Modifier
-                        .size(56.dp)
-                        .clip(RoundedCornerShape(16.dp))
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
                         .background(CyanFaint)
-                        .border(1.dp, NeonCyan.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
-                        .clickable { localPart = "" },
-                    contentAlignment = Alignment.Center
+                        .border(1.dp, NeonCyan.copy(alpha = 0.3f), RoundedCornerShape(18.dp))
+                        .clickable { manualMode = true }
+                        .padding(vertical = 16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Casino,
-                        contentDescription = "عشوائي",
+                        imageVector = Icons.Rounded.Edit,
+                        contentDescription = null,
                         tint = CyanGlow,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(17.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "أكتب الاسم بنفسي",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = CyanGlow
                     )
                 }
             }
 
-            Spacer(Modifier.height(10.dp))
-
-            // معاينة العنوان
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(CyanFaint)
-                    .padding(vertical = 13.dp),
-                contentAlignment = Alignment.Center
+            // ===== الوضع اليدوي =====
+            AnimatedVisibility(
+                visible = manualMode,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
             ) {
-                Text(
-                    text = "${localPart.ifBlank { "اسم-عشوائي" }}@$selectedDomain",
-                    style = EmailAddressStyle,
-                    color = CyanGlow,
-                    textAlign = TextAlign.Center
-                )
-            }
+                Column {
 
-            Spacer(Modifier.height(22.dp))
-
-            // الاسم المستعار
-            Text(
-                text = "اسم للتمييز (اختياري)",
-                style = MaterialTheme.typography.labelMedium,
-                color = TextSecondary
-            )
-
-            Spacer(Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = label,
-                onValueChange = { label = it.take(30) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = {
-                    Text(
-                        text = "مثلاً: تسجيلات المواقع",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextDisabled
-                    )
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(16.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary,
-                    focusedBorderColor = NeonCyan,
-                    unfocusedBorderColor = BorderSubtle,
-                    cursorColor = NeonCyan,
-                    focusedContainerColor = CardSurface,
-                    unfocusedContainerColor = CardSurface
-                )
-            )
-
-            Spacer(Modifier.height(22.dp))
-
-            // مدة الصلاحية
-            Text(
-                text = "مدة الصلاحية",
-                style = MaterialTheme.typography.labelMedium,
-                color = TextSecondary
-            )
-
-            Spacer(Modifier.height(10.dp))
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                AddressLifetime.entries.chunked(3).forEach { rowItems ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        rowItems.forEach { lifetime ->
-                            LifetimeChip(
-                                lifetime = lifetime,
-                                selected = selectedLifetime == lifetime,
-                                onClick = { selectedLifetime = lifetime },
-                                modifier = Modifier.weight(1f)
+                    OutlinedTextField(
+                        value = localPart,
+                        onValueChange = { input ->
+                            localPart = input.lowercase().filter {
+                                it.isLetterOrDigit() || it == '.' || it == '_' || it == '-'
+                            }.take(32)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = {
+                            Text(
+                                text = "اسم العنوان",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextDisabled
                             )
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(16.dp),
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.None
+                        ),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedBorderColor = NeonCyan,
+                            unfocusedBorderColor = BorderSubtle,
+                            cursorColor = NeonCyan,
+                            focusedContainerColor = CardSurface,
+                            unfocusedContainerColor = CardSurface
+                        )
+                    )
+
+                    Spacer(Modifier.height(10.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(CyanFaint)
+                            .padding(vertical = 13.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "${localPart.ifBlank { "الاسم" }}@$selectedDomain",
+                            style = EmailAddressStyle,
+                            color = CyanGlow,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+
+                    Spacer(Modifier.height(18.dp))
+
+                    Text(
+                        text = "اسم للتمييز (اختياري)",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextSecondary
+                    )
+
+                    Spacer(Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = label,
+                        onValueChange = { label = it.take(30) },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = {
+                            Text(
+                                text = "مثلاً: تسجيلات المواقع",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextDisabled
+                            )
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(16.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = TextPrimary,
+                            unfocusedTextColor = TextPrimary,
+                            focusedBorderColor = NeonCyan,
+                            unfocusedBorderColor = BorderSubtle,
+                            cursorColor = NeonCyan,
+                            focusedContainerColor = CardSurface,
+                            unfocusedContainerColor = CardSurface
+                        )
+                    )
+
+                    Spacer(Modifier.height(18.dp))
+
+                    Text(
+                        text = "مدة الصلاحية",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextSecondary
+                    )
+
+                    Spacer(Modifier.height(10.dp))
+
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        AddressLifetime.entries.chunked(3).forEach { rowItems ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                rowItems.forEach { lifetime ->
+                                    LifetimeChip(
+                                        lifetime = lifetime,
+                                        selected = selectedLifetime == lifetime,
+                                        onClick = { selectedLifetime = lifetime },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                repeat(3 - rowItems.size) {
+                                    Spacer(Modifier.weight(1f))
+                                }
+                            }
                         }
-                        repeat(3 - rowItems.size) {
-                            Spacer(Modifier.weight(1f))
-                        }
+                    }
+
+                    Spacer(Modifier.height(24.dp))
+
+                    GlowButton(
+                        text = if (isCreating) "بيتعمل..." else "إنشاء العنوان",
+                        enabled = !isCreating && localPart.length >= 3,
+                        onClick = {
+                            onCreate(
+                                localPart.takeIf { it.isNotBlank() },
+                                label.takeIf { it.isNotBlank() },
+                                selectedLifetime,
+                                selectedDomain
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(Modifier.height(10.dp))
+
+                    TextButton(
+                        onClick = { manualMode = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "رجوع للعشوائي",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = TextTertiary
+                        )
                     }
                 }
             }
-
-            Spacer(Modifier.height(30.dp))
-
-            GlowButton(
-                text = if (isCreating) "بيتعمل..." else "إنشاء العنوان",
-                enabled = !isCreating,
-                onClick = {
-                    onCreate(
-                        localPart.takeIf { it.isNotBlank() },
-                        label.takeIf { it.isNotBlank() },
-                        selectedLifetime,
-                        selectedDomain
-                    )
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
         }
     }
 }
