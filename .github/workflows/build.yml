@@ -28,6 +28,31 @@ jobs:
       - name: Grant execute permission
         run: chmod +x ./gradlew
 
+      # keystore ثابت — نفس البصمة كل مرة
+      - name: Create keystore
+        run: |
+          keytool -genkeypair -v \
+            -keystore app/mailio.keystore \
+            -storepass mailio2026 \
+            -keypass mailio2026 \
+            -alias mailio \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Mailio, OU=Mobile, O=Burootro, L=Cairo, S=Cairo, C=EG"
+
+      # طباعة البصمة عشان نحطها في Firebase
+      - name: Print SHA-1 fingerprint
+        run: |
+          echo "=================================================="
+          echo "               SHA-1 FINGERPRINT"
+          echo "=================================================="
+          keytool -list -v \
+            -keystore app/mailio.keystore \
+            -storepass mailio2026 \
+            -alias mailio | grep -A 1 "SHA1:"
+          echo "=================================================="
+
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
 
