@@ -36,7 +36,6 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(prefs: MailioPreferences): OkHttpClient {
 
-        // بيضيف مفتاح الاسترجاع ومعرّف الجهاز لكل طلب تلقائياً
         val authInterceptor = Interceptor { chain ->
             val original = chain.request()
 
@@ -61,11 +60,13 @@ object NetworkModule {
         return OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
             .addInterceptor(logging)
-            // السيرفر المجاني بينام، فأول طلب ممكن ياخد وقت
-            .connectTimeout(70, TimeUnit.SECONDS)
-            .readTimeout(70, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
-            .retryOnConnectionFailure(true)
+            // مهلة طويلة — السيرفر المجاني بياخد لحد 60 ثانية عشان يصحى
+            .connectTimeout(120, TimeUnit.SECONDS)
+            .readTimeout(120, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
+            .callTimeout(150, TimeUnit.SECONDS)
+            // مهم: مفيش إعادة محاولة تلقائية — بتعمل عناوين مكررة
+            .retryOnConnectionFailure(false)
             .build()
     }
 
