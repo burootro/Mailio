@@ -4,9 +4,6 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.animation.core.*
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -37,6 +34,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(
     onAddressClick: (MailAddress) -> Unit,
+    onAddressCreated: (addressId: String) -> Unit,
     onSettingsClick: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
@@ -58,9 +56,10 @@ fun HomeScreen(
                 viewModel.consumeEvent()
             }
             is HomeEvent.AddressCreated -> {
+                // نقفل النافذة وندخل الصندوق على طول
                 showCreateSheet = false
-                snackbarHostState.showSnackbar("اتعمل العنوان: ${e.email}")
                 viewModel.consumeEvent()
+                onAddressCreated(e.addressId)
             }
             null -> Unit
         }
