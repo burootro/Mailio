@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
@@ -35,6 +36,7 @@ class MailioPreferences @Inject constructor(
         val AUTO_DELETE_DAYS = longPreferencesKey("auto_delete_days")
         val LAST_SYNC_AT = longPreferencesKey("last_sync_at")
         val PREFERRED_DOMAIN = stringPreferencesKey("preferred_domain")
+        val READ_MESSAGES = stringSetPreferencesKey("read_messages")
     }
 
     // ===== مفتاح الاسترجاع =====
@@ -63,6 +65,37 @@ class MailioPreferences @Inject constructor(
 
     suspend fun setKeyBackedUp(value: Boolean) {
         context.dataStore.edit { it[Keys.KEY_BACKED_UP] = value }
+    }
+
+    // ===== الرسايل المقروءة =====
+
+    /**
+     * بنحتفظ بمعرّفات الرسايل المقروءة عشان المزامنة متلغيش القراءة
+     */
+    suspend fun getReadMessageIds(): Set<String> =
+        context.dataStore.data.first()[Keys.READ_MESSAGES] ?: emptySet()
+
+    suspend fun markAsRead(messageId: String) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[Keys.READ_MESSAGES] ?: emptySet()
+            prefs[Keys.READ_MESSAGES] = (current + messageId).takeLast(1000).toSet()
+        }
+    }
+
+    suspend fun markManyAsRead(messageIds: Collection<String>) {
+        if (messageIds.isEmpty()) return
+
+        context.dataStore.edit { prefs ->
+            val current = prefs[Keys.READ_MESSAGES] ?: emptySet()
+            prefs[Keys.READ_MESSAGES] = (current + messageIds).takeLast(1000).toSet()
+        }
+    }
+
+    suspend fun markAsUnread(messageId: String) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[Keys.READ_MESSAGES] ?: emptySet()
+            prefs[Keys.READ_MESSAGES] = current - messageId
+        }
     }
 
     // ===== توكن الإشعارات =====
