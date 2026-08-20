@@ -12,7 +12,7 @@ import javax.inject.Inject
 
 sealed interface StartDestination {
     data object Loading : StartDestination
-    data object Onboarding : StartDestination
+    data object SignIn : StartDestination
     data object Home : StartDestination
 }
 
@@ -26,12 +26,12 @@ class SplashViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            // لو فيه مفتاح محفوظ، يبقى المستخدم مسجل بالفعل
-            val hasKey = prefs.getRecoveryKey() != null
-            _destination.value = if (hasKey) {
+            val key = prefs.getRecoveryKey()
+
+            _destination.value = if (key != null) {
                 StartDestination.Home
             } else {
-                StartDestination.Onboarding
+                StartDestination.SignIn
             }
         }
     }
