@@ -78,6 +78,10 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             prefs.getOrCreateDeviceId()
             syncRepository.wakeServer()
+
+            // تسجيل توكن الإشعارات
+            syncRepository.registerPushToken()
+
             syncIfRegistered()
         }
 
@@ -128,21 +132,15 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    /**
+     * مزامنة صامتة — من غير إشعارات، لأن Firebase بقى بيتولاها
+     */
     private suspend fun quietSync() {
         if (_isSyncing.value) return
         if (prefs.getRecoveryKey() == null) return
 
-        val notificationsOn = prefs.notificationsEnabled.first()
-
         syncRepository.syncMessages().fold(
-            onSuccess = { newMessages ->
-                _isConnected.value = true
-                if (notificationsOn) {
-                    newMessages.forEach { message ->
-                        notifier.notifyNewMessage(message)
-                    }
-                }
-            },
+            onSuccess = { _isConnected.value = true },
             onFailure = { _isConnected.value = false }
         )
     }
@@ -174,7 +172,6 @@ class HomeViewModel @Inject constructor(
                     )
                 },
                 onFailure = { error ->
-                    // ممكن يكون اتعمل على السيرفر والرد اتأخر — نتأكد
                     val recovered = recoverCreatedAddress(before)
 
                     if (recovered != null) {
@@ -195,9 +192,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    /**
-     * بيسحب العناوين من السيرفر ويشوف لو فيه عنوان جديد اتعمل
-     */
     private suspend fun recoverCreatedAddress(beforeIds: Set<String>): MailAddress? {
         repeat(3) {
             delay(2000)
