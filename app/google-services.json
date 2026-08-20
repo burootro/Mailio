@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "156972487714",
+    "project_id": "mailio-ec638",
+    "storage_bucket": "mailio-ec638.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:156972487714:android:7a2012ea9bcf0695cda67b",
+        "android_client_info": {
+          "package_name": "com.burootro.mailio"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "156972487714-v2ivabs5hr7k5385nu2qt1olphvvhhrl.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.burootro.mailio",
+            "certificate_hash": "102fee21babc3d15aae072b8d2f587c3f1d352f0"
+          }
+        },
+        {
+          "client_id": "156972487714-aek25kqcuvp1mionka074mjo1e14bpcv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBxnuiL3IPZOYkNbjdK9_UxPO2DhO3qv1E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "156972487714-aek25kqcuvp1mionka074mjo1e14bpcv.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
