@@ -22,13 +22,33 @@ android {
         vectorDrawables { useSupportLibrary = true }
     }
 
+    signingConfigs {
+        create("mailio") {
+            val keystoreFile = file("mailio.keystore")
+            if (keystoreFile.exists()) {
+                storeFile = keystoreFile
+                storePassword = "mailio2026"
+                keyAlias = "mailio"
+                keyPassword = "mailio2026"
+            }
+        }
+    }
+
     buildTypes {
         debug {
             isMinifyEnabled = false
+            val keystoreFile = file("mailio.keystore")
+            if (keystoreFile.exists()) {
+                signingConfig = signingConfigs.getByName("mailio")
+            }
         }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            val keystoreFile = file("mailio.keystore")
+            if (keystoreFile.exists()) {
+                signingConfig = signingConfigs.getByName("mailio")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -93,9 +113,11 @@ dependencies {
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
 
-    // Firebase (الإشعارات)
+    // Firebase (الإشعارات + تسجيل الدخول)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+    implementation(libs.firebase.auth)
+    implementation(libs.play.services.auth)
 
     // Networking
     implementation(libs.retrofit)
