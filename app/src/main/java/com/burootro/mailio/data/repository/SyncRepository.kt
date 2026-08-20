@@ -11,6 +11,7 @@ import com.burootro.mailio.data.remote.dto.RestoreRequest
 import com.burootro.mailio.data.remote.dto.UpdateLabelRequest
 import com.burootro.mailio.domain.model.AddressLifetime
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -21,6 +22,11 @@ data class SyncResult(
     val addressesUpdated: Int = 0
 )
 
+data class CreatedAddress(
+    val id: String,
+    val email: String
+)
+
 @Singleton
 class SyncRepository @Inject constructor(
     private val api: MailioApi,
@@ -29,6 +35,40 @@ class SyncRepository @Inject constructor(
     private val prefs: MailioPreferences
 ) {
 
+    /**
+     * بيصحّي السيرفر النايم — بينادى أول ما التطبيق يفتح
+     */
+    suspend fun wakeServer() = withContext(Dispatchers.IO) {
+        try {
+            api.health()
+        } catch (e: Exception) {
+            // مش مهم لو فشل، الغرض بس نبعت أول طلب يصحيه
+        }
+    }
+
+    /**
+     * بيعيد المحاولة لو السيرفر نايم أو الاتصال فشل
+     */
+    private suspend fun <T> retrying(
+        attempts: Int = 3,
+        block: suspend () -> T
+    ): T {
+        var lastError: Exception? = null
+
+        repeat(attempts) { index ->
+            try {
+                return block()
+            } catch (e: Exception) {
+                lastError = e
+                if (index < attempts - 1) {
+                    delay(2500L * (index + 1))
+                }
+            }
+        }
+
+        throw lastError ?: Exception("فشل الاتصال")
+    }
+
     suspend fun ensureRegistered(): Result<String> = withContext(Dispatchers.IO) {
         try {
             val existing = prefs.getRecoveryKey()
@@ -36,7 +76,7 @@ class SyncRepository @Inject constructor(
                 return@withContext Result.success(existing)
             }
 
-            val response = api.register()
+            val response = retrying { api.register() }
             prefs.setRecoveryKey(response.recoveryKey)
 
             if (response.domains.isNotEmpty()) {
@@ -53,7 +93,7 @@ class SyncRepository @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 val key = recoveryKey.trim().uppercase()
-                val response = api.restore(RestoreRequest(key))
+                val response = retrying { api.restore(RestoreRequest(key)) }
 
                 prefs.setRecoveryKey(key)
                 prefs.setKeyBackedUp(true)
@@ -81,6 +121,9 @@ class SyncRepository @Inject constructor(
             }
         }
 
+    /**
+     * إنشاء عنوان — مع إعادة محاولة لو السيرفر نايم
+     */
     suspend fun createAddress(
         localPart: String?,
         label: String?,
@@ -88,14 +131,16 @@ class SyncRepository @Inject constructor(
         domain: String?
     ): Result<CreatedAddress> = withContext(Dispatchers.IO) {
         try {
-            val response = api.createAddress(
-                CreateAddressRequest(
-                    localPart = localPart,
-                    label = label,
-                    lifetimeMs = lifetime.millis,
-                    domain = domain
+            val response = retrying {
+                api.createAddress(
+                    CreateAddressRequest(
+                        localPart = localPart,
+                        label = label,
+                        lifetimeMs = lifetime.millis,
+                        domain = domain
+                    )
                 )
-            )
+            }
 
             addressDao.insert(response.address.toEntity())
 
@@ -122,21 +167,16 @@ class SyncRepository @Inject constructor(
         Result.success(Unit)
     }
 
-    /**
-     * حذف رسالة من السيرفر والمحلي معاً
-     * ده بيمنعها ترجع مع المزامنة الجاية
-     */
     suspend fun deleteMessage(messageId: String): Result<Unit> = withContext(Dispatchers.IO) {
         val message = messageDao.getById(messageId)
 
         try {
             api.deleteMessage(messageId)
         } catch (e: Exception) {
-            // نكمل الحذف المحلي حتى لو السيرفر فشل
+            // نكمل الحذف المحلي
         }
 
         messageDao.deleteById(messageId)
-
         message?.let { refreshUnreadCount(it.addressId) }
 
         Result.success(Unit)
@@ -154,14 +194,32 @@ class SyncRepository @Inject constructor(
             Result.success(Unit)
         }
 
-    suspend fun syncMessages(): Result<SyncResult> = withContext(Dispatchers.IO) {
+    /**
+     * بيرجع الرسايل الجديدة عشان الإشعارات تعرف تنبّه
+     */
+    suspend fun syncMessages(): Result<List<NewMessageInfo>> = withContext(Dispatchers.IO) {
         try {
             val since = prefs.lastSyncAt.first()
             val response = api.syncMessages(since = since)
 
+            val newOnes = mutableListOf<NewMessageInfo>()
+
             if (response.messages.isNotEmpty()) {
                 val entities = response.messages.map { dto ->
                     val existing = messageDao.getById(dto.id)
+
+                    if (existing == null) {
+                        newOnes.add(
+                            NewMessageInfo(
+                                id = dto.id,
+                                addressId = dto.addressId,
+                                fromName = dto.fromName ?: dto.fromEmail.substringBefore("@"),
+                                subject = dto.subject,
+                                preview = dto.preview
+                            )
+                        )
+                    }
+
                     dto.toEntity(
                         isRead = existing?.isRead ?: false,
                         isStarred = existing?.isStarred ?: false
@@ -179,7 +237,7 @@ class SyncRepository @Inject constructor(
             }
             prefs.setLastSyncAt(serverTime)
 
-            Result.success(SyncResult(newMessages = response.messages.size))
+            Result.success(newOnes)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -250,16 +308,18 @@ class SyncRepository @Inject constructor(
             message.contains("409") -> Exception("العنوان ده محجوز، جرب اسم تاني")
             message.contains("429") -> Exception("وصلت للحد الأقصى، استنى شوية")
             message.contains("400") -> Exception("الاسم مش صالح")
-            message.contains("timeout", true) -> Exception("السيرفر بيصحى، جرب تاني بعد شوية")
-            else -> Exception("مفيش اتصال بالسيرفر")
+            else -> Exception("السيرفر بطيء دلوقتي، جرب تاني")
         }
     }
 }
 
 /**
- * نتيجة إنشاء عنوان — بنحتاج الـ id عشان نفتح صندوق الوارد على طول
+ * بيانات الرسالة الجديدة — للإشعارات
  */
-data class CreatedAddress(
+data class NewMessageInfo(
     val id: String,
-    val email: String
+    val addressId: String,
+    val fromName: String,
+    val subject: String,
+    val preview: String
 )
