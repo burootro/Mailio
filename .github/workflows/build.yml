@@ -28,37 +28,21 @@ jobs:
       - name: Grant execute permission
         run: chmod +x ./gradlew
 
-      - name: Create keystore
+      - name: Restore keystore
         env:
           SAVED_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           if [ -z "$SAVED_KEYSTORE" ]; then
-            echo "توليد keystore جديد"
-            keytool -genkeypair -v \
-              -keystore app/mailio.keystore \
-              -storepass mailio2026 \
-              -keypass mailio2026 \
-              -alias mailio \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -dname "CN=Mailio, OU=Mobile, O=Burootro, L=Cairo, S=Cairo, C=EG"
-          else
-            echo "استخدام الـ keystore المحفوظ"
-            printf '%s' "$SAVED_KEYSTORE" | base64 -d > app/mailio.keystore
+            echo "❌ KEYSTORE_BASE64 مش موجود في Secrets"
+            exit 1
           fi
+          printf '%s' "$SAVED_KEYSTORE" | base64 -d > app/mailio.keystore
+          echo "✅ الـ keystore اترجّع"
 
-      - name: Print SHA-1 fingerprint
+      - name: Verify SHA-1
         run: |
           echo "=== SHA-1 ==="
           keytool -list -v -keystore app/mailio.keystore -storepass mailio2026 -alias mailio | grep "SHA1:"
-
-      - name: Print keystore base64
-        run: |
-          echo "=== KEYSTORE BASE64 ==="
-          base64 -w 0 app/mailio.keystore
-          echo ""
-          echo "=== END ==="
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
