@@ -6,6 +6,7 @@ import com.burootro.mailio.data.remote.dto.CreateAddressResponse
 import com.burootro.mailio.data.remote.dto.MeResponse
 import com.burootro.mailio.data.remote.dto.MessageListResponse
 import com.burootro.mailio.data.remote.dto.OkResponse
+import com.burootro.mailio.data.remote.dto.PushTokenRequest
 import com.burootro.mailio.data.remote.dto.RegisterResponse
 import com.burootro.mailio.data.remote.dto.RestoreRequest
 import com.burootro.mailio.data.remote.dto.RestoreResponse
@@ -20,7 +21,6 @@ import retrofit2.http.Query
 
 interface MailioApi {
 
-    /** بيصحّي السيرفر النايم — مالوش مصادقة */
     @GET("health")
     suspend fun health(): Map<String, String>
 
@@ -34,6 +34,11 @@ interface MailioApi {
 
     @GET("api/auth/me")
     suspend fun me(): MeResponse
+
+    // ===== الإشعارات =====
+
+    @POST("api/push/register")
+    suspend fun registerPushToken(@Body body: PushTokenRequest): OkResponse
 
     // ===== العناوين =====
 
