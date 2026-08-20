@@ -36,6 +36,13 @@ data class MeResponse(
     val domains: List<String> = emptyList()
 )
 
+// ===== الإشعارات =====
+
+@Serializable
+data class PushTokenRequest(
+    val token: String
+)
+
 // ===== العناوين =====
 
 @Serializable
