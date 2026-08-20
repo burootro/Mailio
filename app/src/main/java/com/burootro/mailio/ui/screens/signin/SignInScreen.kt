@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -56,13 +57,15 @@ fun SignInScreen(
     }
 
     LaunchedEffect(event) {
-        if (event is SignInEvent.Success) {
-            viewModel.consumeEvent()
-            onSignedIn()
+        when (event) {
+            is SignInEvent.Success, SignInEvent.GuestReady -> {
+                viewModel.consumeEvent()
+                onSignedIn()
+            }
+            null -> Unit
         }
     }
 
-    // أنميشن الدخول
     var visible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { visible = true }
 
@@ -98,6 +101,8 @@ fun SignInScreen(
         label = "ringAlpha"
     )
 
+    val busy = state.isLoading || state.isSkipping
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -120,7 +125,6 @@ fun SignInScreen(
 
             Spacer(Modifier.weight(1f))
 
-            // اللوجو
             Box(contentAlignment = Alignment.Center) {
                 Box(
                     modifier = Modifier
@@ -194,9 +198,8 @@ fun SignInScreen(
                 }
             }
 
-            Spacer(Modifier.height(46.dp))
+            Spacer(Modifier.height(40.dp))
 
-            // المميزات
             AnimatedVisibility(
                 visible = visible,
                 enter = fadeIn(tween(1000, delayMillis = 300))
@@ -215,7 +218,6 @@ fun SignInScreen(
 
             Spacer(Modifier.weight(1f))
 
-            // رسالة الخطأ
             AnimatedVisibility(
                 visible = state.error != null,
                 enter = fadeIn(),
@@ -245,32 +247,43 @@ fun SignInScreen(
                 }
             }
 
-            // زرار جوجل
             GoogleSignInButton(
                 isLoading = state.isLoading,
+                enabled = !busy,
                 onClick = {
                     viewModel.clearError()
                     launcher.launch(viewModel.getSignInIntent())
                 }
             )
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(14.dp))
+
+            SkipButton(
+                isLoading = state.isSkipping,
+                enabled = !busy,
+                onClick = {
+                    viewModel.clearError()
+                    viewModel.continueAsGuest()
+                }
+            )
+
+            Spacer(Modifier.height(18.dp))
 
             Text(
-                text = "بتسجيل الدخول أنت موافق على شروط الاستخدام",
+                text = "بدون تسجيل، عناوينك محفوظة على الجهاز ده بس",
                 style = MaterialTheme.typography.labelSmall,
                 color = TextDisabled,
                 textAlign = TextAlign.Center
             )
 
-            Spacer(Modifier.height(40.dp))
+            Spacer(Modifier.height(36.dp))
         }
     }
 }
 
 @Composable
 private fun FeatureRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     text: String
 ) {
     Row(
@@ -303,6 +316,7 @@ private fun FeatureRow(
 @Composable
 private fun GoogleSignInButton(
     isLoading: Boolean,
+    enabled: Boolean,
     onClick: () -> Unit
 ) {
     val scale by animateFloatAsState(
@@ -317,8 +331,8 @@ private fun GoogleSignInButton(
             .scale(scale)
             .height(58.dp)
             .clip(RoundedCornerShape(18.dp))
-            .background(Color.White)
-            .clickable(enabled = !isLoading, onClick = onClick),
+            .background(if (enabled) Color.White else Color.White.copy(alpha = 0.5f))
+            .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         if (isLoading) {
@@ -332,7 +346,14 @@ private fun GoogleSignInButton(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                GoogleLogo()
+                Text(
+                    text = "G",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    ),
+                    color = Color(0xFF4285F4)
+                )
                 Text(
                     text = "تسجيل الدخول بجوجل",
                     style = MaterialTheme.typography.labelLarge.copy(
@@ -345,22 +366,38 @@ private fun GoogleSignInButton(
     }
 }
 
-/**
- * شعار جوجل بالألوان الرسمية
- */
 @Composable
-private fun GoogleLogo() {
+private fun SkipButton(
+    isLoading: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
     Box(
-        modifier = Modifier.size(22.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(54.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(CyanFaint)
+            .border(
+                1.dp,
+                NeonCyan.copy(alpha = if (enabled) 0.35f else 0.15f),
+                RoundedCornerShape(18.dp)
+            )
+            .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "G",
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontWeight = FontWeight.Bold,
-                fontSize = 20.sp
-            ),
-            color = Color(0xFF4285F4)
-        )
+        if (isLoading) {
+            CircularProgressIndicator(
+                color = CyanGlow,
+                strokeWidth = 2.5.dp,
+                modifier = Modifier.size(22.dp)
+            )
+        } else {
+            Text(
+                text = "المتابعة بدون تسجيل",
+                style = MaterialTheme.typography.labelLarge,
+                color = if (enabled) CyanGlow else TextDisabled
+            )
+        }
     }
 }
