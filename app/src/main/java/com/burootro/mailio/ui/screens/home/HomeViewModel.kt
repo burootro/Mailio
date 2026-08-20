@@ -29,7 +29,8 @@ data class HomeUiState(
 
 sealed interface HomeEvent {
     data class ShowMessage(val text: String) : HomeEvent
-    data class AddressCreated(val email: String) : HomeEvent
+    /** بيحمل الـ id عشان النافيجيشن يفتح الصندوق على طول */
+    data class AddressCreated(val addressId: String, val email: String) : HomeEvent
 }
 
 @HiltViewModel
@@ -151,9 +152,12 @@ class HomeViewModel @Inject constructor(
                 lifetime = lifetime,
                 domain = domain
             ).fold(
-                onSuccess = { email ->
+                onSuccess = { created ->
                     _isConnected.value = true
-                    _events.value = HomeEvent.AddressCreated(email)
+                    _events.value = HomeEvent.AddressCreated(
+                        addressId = created.id,
+                        email = created.email
+                    )
                 },
                 onFailure = { error ->
                     _events.value = HomeEvent.ShowMessage(
