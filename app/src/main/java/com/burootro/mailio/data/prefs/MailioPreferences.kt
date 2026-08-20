@@ -37,6 +37,11 @@ class MailioPreferences @Inject constructor(
         val LAST_SYNC_AT = longPreferencesKey("last_sync_at")
         val PREFERRED_DOMAIN = stringPreferencesKey("preferred_domain")
         val READ_MESSAGES = stringSetPreferencesKey("read_messages")
+
+        // بيانات جوجل
+        val GOOGLE_EMAIL = stringPreferencesKey("google_email")
+        val GOOGLE_NAME = stringPreferencesKey("google_name")
+        val GOOGLE_PHOTO = stringPreferencesKey("google_photo")
     }
 
     companion object {
@@ -63,7 +68,7 @@ class MailioPreferences @Inject constructor(
         }
     }
 
-    // ===== مفتاح الاسترجاع =====
+    // ===== مفتاح الدخول =====
 
     val recoveryKey: Flow<String?> = context.dataStore.data
         .map { it[Keys.RECOVERY_KEY] }
@@ -89,6 +94,37 @@ class MailioPreferences @Inject constructor(
 
     suspend fun setKeyBackedUp(value: Boolean) {
         context.dataStore.edit { it[Keys.KEY_BACKED_UP] = value }
+    }
+
+    // ===== بيانات جوجل =====
+
+    val googleEmail: Flow<String?> = context.dataStore.data
+        .map { it[Keys.GOOGLE_EMAIL] }
+
+    val googleName: Flow<String?> = context.dataStore.data
+        .map { it[Keys.GOOGLE_NAME] }
+
+    val googlePhoto: Flow<String?> = context.dataStore.data
+        .map { it[Keys.GOOGLE_PHOTO] }
+
+    /** بيحدد لو المستخدم داخل بجوجل ولا بمفتاح */
+    val isGoogleAccount: Flow<Boolean> = context.dataStore.data
+        .map { (it[Keys.RECOVERY_KEY] ?: "").startsWith("GOOGLE-") }
+
+    suspend fun saveGoogleProfile(email: String?, name: String?, photo: String?) {
+        context.dataStore.edit { prefs ->
+            email?.let { prefs[Keys.GOOGLE_EMAIL] = it }
+            name?.let { prefs[Keys.GOOGLE_NAME] = it }
+            photo?.let { prefs[Keys.GOOGLE_PHOTO] = it }
+        }
+    }
+
+    suspend fun clearGoogleProfile() {
+        context.dataStore.edit { prefs ->
+            prefs.remove(Keys.GOOGLE_EMAIL)
+            prefs.remove(Keys.GOOGLE_NAME)
+            prefs.remove(Keys.GOOGLE_PHOTO)
+        }
     }
 
     // ===== الرسايل المقروءة =====
