@@ -135,6 +135,9 @@ fun MailioNavigation(
                 onAddressClick = { address ->
                     navController.navigate("${Routes.INBOX}/${address.id}")
                 },
+                onAddressCreated = { addressId ->
+                    navController.navigate("${Routes.INBOX}/$addressId")
+                },
                 onSettingsClick = {
                     navController.navigate(Routes.SETTINGS)
                 }
