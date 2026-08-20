@@ -55,9 +55,6 @@ class SyncRepository @Inject constructor(
         }
     }
 
-    /**
-     * تسجيل توكن الإشعارات على السيرفر
-     */
     suspend fun registerPushToken(): Result<Unit> = withContext(Dispatchers.IO) {
         try {
             if (prefs.getRecoveryKey() == null) {
@@ -87,6 +84,9 @@ class SyncRepository @Inject constructor(
                 }
         }
 
+    /**
+     * إعادة المحاولة — للعمليات الآمنة بس (اللي التكرار فيها مش بيعمل ضرر)
+     */
     private suspend fun <T> retrying(
         attempts: Int = 3,
         block: suspend () -> T
@@ -159,6 +159,10 @@ class SyncRepository @Inject constructor(
             }
         }
 
+    /**
+     * إنشاء عنوان — محاولة واحدة بس!
+     * التكرار هنا بيعمل عناوين مكررة
+     */
     suspend fun createAddress(
         localPart: String?,
         label: String?,
@@ -166,16 +170,14 @@ class SyncRepository @Inject constructor(
         domain: String?
     ): Result<CreatedAddress> = withContext(Dispatchers.IO) {
         try {
-            val response = retrying {
-                api.createAddress(
-                    CreateAddressRequest(
-                        localPart = localPart,
-                        label = label,
-                        lifetimeMs = lifetime.millis,
-                        domain = domain
-                    )
+            val response = api.createAddress(
+                CreateAddressRequest(
+                    localPart = localPart,
+                    label = label,
+                    lifetimeMs = lifetime.millis,
+                    domain = domain
                 )
-            }
+            )
 
             addressDao.insert(response.address.toEntity())
 
@@ -229,18 +231,23 @@ class SyncRepository @Inject constructor(
             Result.success(Unit)
         }
 
+    /**
+     * المزامنة بتحترم حالة القراءة المحفوظة
+     */
     suspend fun syncMessages(): Result<List<NewMessageInfo>> = withContext(Dispatchers.IO) {
         try {
             val since = prefs.lastSyncAt.first()
             val response = api.syncMessages(since = since)
 
             val newOnes = mutableListOf<NewMessageInfo>()
+            val readIds = prefs.getReadMessageIds()
 
             if (response.messages.isNotEmpty()) {
                 val entities = response.messages.map { dto ->
                     val existing = messageDao.getById(dto.id)
+                    val wasRead = existing?.isRead ?: (dto.id in readIds)
 
-                    if (existing == null) {
+                    if (existing == null && !wasRead) {
                         newOnes.add(
                             NewMessageInfo(
                                 id = dto.id,
@@ -253,7 +260,7 @@ class SyncRepository @Inject constructor(
                     }
 
                     dto.toEntity(
-                        isRead = existing?.isRead ?: false,
+                        isRead = wasRead,
                         isStarred = existing?.isStarred ?: false
                     )
                 }
@@ -279,11 +286,12 @@ class SyncRepository @Inject constructor(
         withContext(Dispatchers.IO) {
             try {
                 val response = api.getMessages(addressId)
+                val readIds = prefs.getReadMessageIds()
 
                 val entities = response.messages.map { dto ->
                     val existing = messageDao.getById(dto.id)
                     dto.toEntity(
-                        isRead = existing?.isRead ?: false,
+                        isRead = existing?.isRead ?: (dto.id in readIds),
                         isStarred = existing?.isStarred ?: false
                     )
                 }
