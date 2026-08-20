@@ -39,6 +39,30 @@ class MailioPreferences @Inject constructor(
         val READ_MESSAGES = stringSetPreferencesKey("read_messages")
     }
 
+    companion object {
+        private const val MAX_READ_IDS = 1000
+        private const val ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+        fun generateRecoveryKey(): String {
+            val random = SecureRandom()
+            val groups = (1..4).map {
+                buildString {
+                    repeat(4) {
+                        append(ALPHABET[random.nextInt(ALPHABET.length)])
+                    }
+                }
+            }
+            return "MLO-" + groups.joinToString("-")
+        }
+
+        fun randomHex(bytes: Int): String {
+            val random = SecureRandom()
+            val buffer = ByteArray(bytes)
+            random.nextBytes(buffer)
+            return buffer.joinToString("") { "%02x".format(it) }
+        }
+    }
+
     // ===== مفتاح الاسترجاع =====
 
     val recoveryKey: Flow<String?> = context.dataStore.data
@@ -69,17 +93,11 @@ class MailioPreferences @Inject constructor(
 
     // ===== الرسايل المقروءة =====
 
-    /**
-     * بنحتفظ بمعرّفات الرسايل المقروءة عشان المزامنة متلغيش القراءة
-     */
     suspend fun getReadMessageIds(): Set<String> =
         context.dataStore.data.first()[Keys.READ_MESSAGES] ?: emptySet()
 
     suspend fun markAsRead(messageId: String) {
-        context.dataStore.edit { prefs ->
-            val current = prefs[Keys.READ_MESSAGES] ?: emptySet()
-            prefs[Keys.READ_MESSAGES] = (current + messageId).takeLast(1000).toSet()
-        }
+        markManyAsRead(listOf(messageId))
     }
 
     suspend fun markManyAsRead(messageIds: Collection<String>) {
@@ -87,7 +105,13 @@ class MailioPreferences @Inject constructor(
 
         context.dataStore.edit { prefs ->
             val current = prefs[Keys.READ_MESSAGES] ?: emptySet()
-            prefs[Keys.READ_MESSAGES] = (current + messageIds).takeLast(1000).toSet()
+            val merged = current + messageIds
+
+            prefs[Keys.READ_MESSAGES] = if (merged.size > MAX_READ_IDS) {
+                merged.toList().takeLast(MAX_READ_IDS).toSet()
+            } else {
+                merged
+            }
         }
     }
 
@@ -167,31 +191,5 @@ class MailioPreferences @Inject constructor(
 
     suspend fun clearAll() {
         context.dataStore.edit { it.clear() }
-    }
-
-    // ===== أدوات التوليد =====
-
-    companion object {
-
-        private const val ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-
-        fun generateRecoveryKey(): String {
-            val random = SecureRandom()
-            val groups = (1..4).map {
-                buildString {
-                    repeat(4) {
-                        append(ALPHABET[random.nextInt(ALPHABET.length)])
-                    }
-                }
-            }
-            return "MLO-" + groups.joinToString("-")
-        }
-
-        fun randomHex(bytes: Int): String {
-            val random = SecureRandom()
-            val buffer = ByteArray(bytes)
-            random.nextBytes(buffer)
-            return buffer.joinToString("") { "%02x".format(it) }
-        }
     }
 }
