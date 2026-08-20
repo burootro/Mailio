@@ -15,15 +15,13 @@ import androidx.navigation.navArgument
 import com.burootro.mailio.ui.screens.home.HomeScreen
 import com.burootro.mailio.ui.screens.inbox.InboxScreen
 import com.burootro.mailio.ui.screens.message.MessageScreen
-import com.burootro.mailio.ui.screens.onboarding.OnboardingScreen
-import com.burootro.mailio.ui.screens.restore.RestoreScreen
 import com.burootro.mailio.ui.screens.settings.SettingsScreen
+import com.burootro.mailio.ui.screens.signin.SignInScreen
 import com.burootro.mailio.ui.screens.splash.SplashScreen
 
 object Routes {
     const val SPLASH = "splash"
-    const val ONBOARDING = "onboarding"
-    const val RESTORE = "restore"
+    const val SIGN_IN = "signin"
     const val HOME = "home"
     const val INBOX = "inbox"
     const val MESSAGE = "message"
@@ -44,8 +42,8 @@ fun MailioNavigation(
             exitTransition = { fadeOut(tween(600)) }
         ) {
             SplashScreen(
-                onNavigateToOnboarding = {
-                    navController.navigate(Routes.ONBOARDING) {
+                onNavigateToSignIn = {
+                    navController.navigate(Routes.SIGN_IN) {
                         popUpTo(Routes.SPLASH) { inclusive = true }
                     }
                 },
@@ -58,53 +56,14 @@ fun MailioNavigation(
         }
 
         composable(
-            route = Routes.ONBOARDING,
+            route = Routes.SIGN_IN,
             enterTransition = { fadeIn(tween(600)) },
-            exitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { -it / 3 },
-                    animationSpec = tween(450)
-                ) + fadeOut(tween(300))
-            },
-            popEnterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { -it / 4 },
-                    animationSpec = tween(400)
-                ) + fadeIn(tween(400))
-            }
+            exitTransition = { fadeOut(tween(400)) }
         ) {
-            OnboardingScreen(
-                onFinished = {
+            SignInScreen(
+                onSignedIn = {
                     navController.navigate(Routes.HOME) {
-                        popUpTo(Routes.ONBOARDING) { inclusive = true }
-                    }
-                },
-                onRestoreClick = {
-                    navController.navigate(Routes.RESTORE)
-                }
-            )
-        }
-
-        composable(
-            route = Routes.RESTORE,
-            enterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { it },
-                    animationSpec = tween(400)
-                ) + fadeIn(tween(300))
-            },
-            popExitTransition = {
-                slideOutHorizontally(
-                    targetOffsetX = { it },
-                    animationSpec = tween(400)
-                ) + fadeOut(tween(300))
-            }
-        ) {
-            RestoreScreen(
-                onBack = { navController.popBackStack() },
-                onRestored = {
-                    navController.navigate(Routes.HOME) {
-                        popUpTo(Routes.ONBOARDING) { inclusive = true }
+                        popUpTo(Routes.SIGN_IN) { inclusive = true }
                     }
                 }
             )
@@ -112,12 +71,7 @@ fun MailioNavigation(
 
         composable(
             route = Routes.HOME,
-            enterTransition = {
-                slideInHorizontally(
-                    initialOffsetX = { it / 3 },
-                    animationSpec = tween(450)
-                ) + fadeIn(tween(450))
-            },
+            enterTransition = { fadeIn(tween(500)) },
             exitTransition = {
                 slideOutHorizontally(
                     targetOffsetX = { -it / 4 },
@@ -221,7 +175,12 @@ fun MailioNavigation(
             }
         ) {
             SettingsScreen(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onSignedOut = {
+                    navController.navigate(Routes.SIGN_IN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
             )
         }
     }
