@@ -41,10 +41,6 @@ class MailRepository @Inject constructor(
     suspend fun getAddress(id: String): MailAddress? =
         addressDao.getById(id)?.toDomain()
 
-    /**
-     * إنشاء عنوان جديد.
-     * لو localPart فاضي، بيتولّد اسم عشوائي.
-     */
     suspend fun createAddress(
         domain: String,
         localPart: String? = null,
@@ -129,13 +125,30 @@ class MailRepository @Inject constructor(
         }
     }
 
+    /**
+     * القراءة بتتحفظ محلياً وفي الإعدادات — عشان المزامنة متلغيهاش
+     */
     suspend fun markRead(id: String, read: Boolean = true) {
         messageDao.setRead(id, read)
+
+        if (read) {
+            prefs.markAsRead(id)
+        } else {
+            prefs.markAsUnread(id)
+        }
+
         messageDao.getById(id)?.let { refreshAddressState(it.addressId) }
     }
 
+    /**
+     * قراءة الكل — بتتحفظ كمان
+     */
     suspend fun markAllRead(addressId: String) {
+        val messages = messageDao.getAllForAddress(addressId)
+
         messageDao.markAllReadForAddress(addressId)
+        prefs.markManyAsRead(messages.map { it.id })
+
         refreshAddressState(addressId)
     }
 
@@ -158,7 +171,6 @@ class MailRepository @Inject constructor(
 
     // ===== الصيانة =====
 
-    /** حذف الرسايل الأقدم من المدة المحددة في الإعدادات */
     suspend fun runAutoCleanup(days: Long) {
         if (days <= 0) return
         val cutoff = System.currentTimeMillis() - (days * 24 * 60 * 60 * 1000L)
