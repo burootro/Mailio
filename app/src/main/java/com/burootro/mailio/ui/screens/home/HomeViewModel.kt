@@ -42,7 +42,7 @@ class HomeViewModel @Inject constructor(
     private val _isSyncing = MutableStateFlow(false)
     private val _isConnected = MutableStateFlow(true)
 
-    val availableDomains: List<String> = listOf("mailio.app")
+    val availableDomains: List<String> = listOf("mailsio.uk")
 
     val uiState: StateFlow<HomeUiState> = combine(
         repository.observeAddresses(),
@@ -74,7 +74,6 @@ class HomeViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             prefs.getOrCreateDeviceId()
-            // مفيش تسجيل تلقائي — التسجيل بيحصل من شاشة الترحيب بس
             syncIfRegistered()
         }
 
@@ -86,9 +85,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    /**
-     * المزامنة بتشتغل بس لو فيه مفتاح محفوظ
-     */
     private suspend fun syncIfRegistered() {
         if (prefs.getRecoveryKey() == null) return
 
