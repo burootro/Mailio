@@ -20,6 +20,10 @@ import retrofit2.http.Query
 
 interface MailioApi {
 
+    /** بيصحّي السيرفر النايم — مالوش مصادقة */
+    @GET("health")
+    suspend fun health(): Map<String, String>
+
     // ===== المصادقة =====
 
     @POST("api/auth/register")
