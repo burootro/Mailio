@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.burootro.mailio.data.repository.MailRepository
+import com.burootro.mailio.data.repository.SyncRepository
 import com.burootro.mailio.domain.model.MailAttachment
 import com.burootro.mailio.domain.model.MailMessage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,6 +32,7 @@ sealed interface MessageEvent {
 @HiltViewModel
 class MessageViewModel @Inject constructor(
     private val repository: MailRepository,
+    private val syncRepository: SyncRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -82,9 +84,12 @@ class MessageViewModel @Inject constructor(
         _showHtml.value = !_showHtml.value
     }
 
+    /**
+     * الحذف من السيرفر كمان — عشان الرسالة متجيش تاني
+     */
     fun delete() {
         viewModelScope.launch {
-            repository.deleteMessage(messageId)
+            syncRepository.deleteMessage(messageId)
             _events.value = MessageEvent.MessageDeleted
         }
     }
