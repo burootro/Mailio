@@ -3,6 +3,8 @@ package com.burootro.mailio.data.remote
 import com.burootro.mailio.data.remote.dto.AddressListResponse
 import com.burootro.mailio.data.remote.dto.CreateAddressRequest
 import com.burootro.mailio.data.remote.dto.CreateAddressResponse
+import com.burootro.mailio.data.remote.dto.GoogleSignInRequest
+import com.burootro.mailio.data.remote.dto.GoogleSignInResponse
 import com.burootro.mailio.data.remote.dto.MeResponse
 import com.burootro.mailio.data.remote.dto.MessageListResponse
 import com.burootro.mailio.data.remote.dto.OkResponse
@@ -24,7 +26,12 @@ interface MailioApi {
     @GET("health")
     suspend fun health(): Map<String, String>
 
-    // ===== المصادقة =====
+    // ===== تسجيل الدخول بجوجل =====
+
+    @POST("api/google/signin")
+    suspend fun googleSignIn(@Body body: GoogleSignInRequest): GoogleSignInResponse
+
+    // ===== المصادقة القديمة =====
 
     @POST("api/auth/register")
     suspend fun register(): RegisterResponse
