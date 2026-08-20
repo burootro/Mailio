@@ -30,7 +30,7 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(
-    onNavigateToOnboarding: () -> Unit,
+    onNavigateToSignIn: () -> Unit,
     onNavigateToHome: () -> Unit,
     viewModel: SplashViewModel = hiltViewModel()
 ) {
@@ -113,17 +113,16 @@ fun SplashScreen(
         startAnimation = true
         delay(500)
         showText = true
-        delay(1800)
+        delay(1500)
         minTimePassed = true
     }
 
-    // ننتقل بس لما الأنميشن يخلص والوجهة تتحدد
     LaunchedEffect(destination, minTimePassed) {
         if (!minTimePassed) return@LaunchedEffect
 
         when (destination) {
             StartDestination.Home -> onNavigateToHome()
-            StartDestination.Onboarding -> onNavigateToOnboarding()
+            StartDestination.SignIn -> onNavigateToSignIn()
             StartDestination.Loading -> Unit
         }
     }
