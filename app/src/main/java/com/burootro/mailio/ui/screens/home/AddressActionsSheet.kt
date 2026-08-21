@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material.icons.rounded.DriveFileRenameOutline
 import androidx.compose.material.icons.rounded.PushPin
+import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -28,7 +29,8 @@ fun AddressActionsSheet(
     onDismiss: () -> Unit,
     onTogglePin: () -> Unit,
     onDelete: () -> Unit,
-    onRename: (String?) -> Unit
+    onRename: (String?) -> Unit,
+    onTransfer: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -57,7 +59,6 @@ fun AddressActionsSheet(
                 .padding(top = 12.dp, bottom = 34.dp)
         ) {
 
-            // رأس النافذة
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
@@ -114,6 +115,16 @@ fun AddressActionsSheet(
                 subtitle = "الاسم اللي بيتعرض في القائمة",
                 tint = CyanGlow,
                 onClick = { showRenameDialog = true }
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            ActionRow(
+                icon = Icons.Rounded.SwapHoriz,
+                title = "نقل لشخص تاني",
+                subtitle = "الرسايل هتتمسح والعنوان ينتقل",
+                tint = ElectricViolet,
+                onClick = onTransfer
             )
 
             Spacer(Modifier.height(10.dp))
@@ -226,10 +237,7 @@ private fun RenameDialog(
                 onValueChange = { text = it.take(30) },
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = {
-                    Text(
-                        text = "اكتب اسم جديد",
-                        color = TextDisabled
-                    )
+                    Text(text = "اكتب اسم جديد", color = TextDisabled)
                 },
                 singleLine = true,
                 shape = RoundedCornerShape(14.dp),
