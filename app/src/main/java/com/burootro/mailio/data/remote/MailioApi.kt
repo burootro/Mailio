@@ -1,6 +1,9 @@
 package com.burootro.mailio.data.remote
 
 import com.burootro.mailio.data.remote.dto.AddressListResponse
+import com.burootro.mailio.data.remote.dto.CancelTransferRequest
+import com.burootro.mailio.data.remote.dto.ClaimTransferRequest
+import com.burootro.mailio.data.remote.dto.ClaimTransferResponse
 import com.burootro.mailio.data.remote.dto.CreateAddressRequest
 import com.burootro.mailio.data.remote.dto.CreateAddressResponse
 import com.burootro.mailio.data.remote.dto.GoogleSignInRequest
@@ -12,6 +15,8 @@ import com.burootro.mailio.data.remote.dto.PushTokenRequest
 import com.burootro.mailio.data.remote.dto.RegisterResponse
 import com.burootro.mailio.data.remote.dto.RestoreRequest
 import com.burootro.mailio.data.remote.dto.RestoreResponse
+import com.burootro.mailio.data.remote.dto.StartTransferRequest
+import com.burootro.mailio.data.remote.dto.StartTransferResponse
 import com.burootro.mailio.data.remote.dto.UpdateLabelRequest
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -26,12 +31,10 @@ interface MailioApi {
     @GET("health")
     suspend fun health(): Map<String, String>
 
-    // ===== تسجيل الدخول بجوجل =====
+    // ===== تسجيل الدخول =====
 
     @POST("api/google/signin")
     suspend fun googleSignIn(@Body body: GoogleSignInRequest): GoogleSignInResponse
-
-    // ===== المصادقة القديمة =====
 
     @POST("api/auth/register")
     suspend fun register(): RegisterResponse
@@ -46,6 +49,17 @@ interface MailioApi {
 
     @POST("api/push/register")
     suspend fun registerPushToken(@Body body: PushTokenRequest): OkResponse
+
+    // ===== نقل العناوين =====
+
+    @POST("api/transfer/start")
+    suspend fun startTransfer(@Body body: StartTransferRequest): StartTransferResponse
+
+    @POST("api/transfer/cancel")
+    suspend fun cancelTransfer(@Body body: CancelTransferRequest): OkResponse
+
+    @POST("api/transfer/claim")
+    suspend fun claimTransfer(@Body body: ClaimTransferRequest): ClaimTransferResponse
 
     // ===== العناوين =====
 
