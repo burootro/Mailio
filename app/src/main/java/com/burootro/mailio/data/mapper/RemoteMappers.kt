@@ -14,17 +14,18 @@ fun AddressDto.toEntity(unreadCount: Int = 0): AddressEntity = AddressEntity(
     label = label,
     createdAt = createdAt,
     expiresAt = expiresAt,
-    isActive = isActive && !isBlocked,
+    isActive = isActive,
     isPinned = false,
     unreadCount = unreadCount,
-    lastActivityAt = lastMessageAt ?: createdAt
+    lastActivityAt = lastMessageAt ?: createdAt,
+    isBlocked = isBlocked,
+    blockedReason = revokedReason
 )
 
 fun List<AddressDto>.toAddressEntities(): List<AddressEntity> = map { it.toEntity() }
 
 /**
  * تحويل رسالة من السيرفر لكيان محلي
- * الرسايل الجاية من السيرفر بتبقى غير مقروءة افتراضياً
  */
 fun MessageDto.toEntity(isRead: Boolean = false, isStarred: Boolean = false): MessageEntity =
     MessageEntity(
