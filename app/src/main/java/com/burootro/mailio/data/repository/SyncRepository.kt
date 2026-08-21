@@ -9,11 +9,13 @@ import com.burootro.mailio.data.remote.MailioApi
 import com.burootro.mailio.data.remote.dto.CancelTransferRequest
 import com.burootro.mailio.data.remote.dto.ClaimTransferRequest
 import com.burootro.mailio.data.remote.dto.CreateAddressRequest
+import com.burootro.mailio.data.remote.dto.CreateAppealRequest
 import com.burootro.mailio.data.remote.dto.PushTokenRequest
 import com.burootro.mailio.data.remote.dto.RestoreRequest
 import com.burootro.mailio.data.remote.dto.StartTransferRequest
 import com.burootro.mailio.data.remote.dto.UpdateLabelRequest
 import com.burootro.mailio.domain.model.AddressLifetime
+import com.burootro.mailio.domain.model.Appeal
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -194,11 +196,44 @@ class SyncRepository @Inject constructor(
         }
     }
 
+    // ===== طلبات المراجعة =====
+
+    suspend fun submitAppeal(addressId: String?, message: String): Result<String> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = api.createAppeal(
+                    CreateAppealRequest(addressId = addressId, message = message.trim())
+                )
+                Result.success(response.message.ifBlank { "وصلنا طلبك" })
+            } catch (e: Exception) {
+                Result.failure(mapAppealError(e))
+            }
+        }
+
+    suspend fun getMyAppeals(): Result<List<Appeal>> = withContext(Dispatchers.IO) {
+        try {
+            val response = api.myAppeals()
+
+            Result.success(
+                response.appeals.map { dto ->
+                    Appeal(
+                        id = dto.id,
+                        addressEmail = dto.addressEmail,
+                        message = dto.message,
+                        status = dto.status,
+                        adminReply = dto.adminReply,
+                        createdAt = dto.createdAt,
+                        repliedAt = dto.repliedAt
+                    )
+                }
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     // ===== النقل =====
 
-    /**
-     * طلب كود نقل للعنوان
-     */
     suspend fun startTransfer(addressId: String): Result<TransferCode> =
         withContext(Dispatchers.IO) {
             try {
@@ -226,9 +261,6 @@ class SyncRepository @Inject constructor(
             }
         }
 
-    /**
-     * استلام عنوان بكود نقل
-     */
     suspend fun claimTransfer(code: String): Result<CreatedAddress> =
         withContext(Dispatchers.IO) {
             try {
@@ -236,7 +268,6 @@ class SyncRepository @Inject constructor(
                     ClaimTransferRequest(code.trim().uppercase())
                 )
 
-                // نسحب العناوين من السيرفر عشان الجديد يظهر
                 syncAddresses()
 
                 Result.success(
@@ -366,7 +397,7 @@ class SyncRepository @Inject constructor(
         }
 
     /**
-     * مزامنة العناوين — بتمسح اللي اتشال من السيرفر
+     * مزامنة العناوين — بتمسح اللي اتسحب وتحدّث حالة الإيقاف فوراً
      */
     suspend fun syncAddresses(): Result<Int> = withContext(Dispatchers.IO) {
         try {
@@ -381,6 +412,7 @@ class SyncRepository @Inject constructor(
                 }
             }
 
+            // تحديث الموجود — بما فيه حالة الإيقاف
             response.addresses.forEach { dto ->
                 val existing = addressDao.getById(dto.id)
                 addressDao.insert(
@@ -429,6 +461,16 @@ class SyncRepository @Inject constructor(
             message.contains("403") -> Exception("العنوان ده موقوف")
             message.contains("400") -> Exception("الكود مش صالح")
             message.contains("429") -> Exception("محاولات كتير، استنى شوية")
+            else -> Exception("مفيش اتصال بالسيرفر")
+        }
+    }
+
+    private fun mapAppealError(e: Exception): Exception {
+        val message = e.message ?: ""
+        return when {
+            message.contains("409") -> Exception("عندك طلب مفتوح بالفعل، استنى الرد")
+            message.contains("400") -> Exception("اشرح المشكلة بتفصيل أكتر")
+            message.contains("429") -> Exception("طلبات كتير، استنى شوية")
             else -> Exception("مفيش اتصال بالسيرفر")
         }
     }
