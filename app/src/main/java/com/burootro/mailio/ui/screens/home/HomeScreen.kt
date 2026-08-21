@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AllInbox
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,6 +42,8 @@ fun HomeScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val isCreating by viewModel.isCreating.collectAsStateWithLifecycle()
     val event by viewModel.events.collectAsStateWithLifecycle()
+    val transferState by viewModel.transferState.collectAsStateWithLifecycle()
+    val claimState by viewModel.claimState.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -56,9 +59,13 @@ fun HomeScreen(
                 viewModel.consumeEvent()
             }
             is HomeEvent.AddressCreated -> {
-                // نقفل النافذة وندخل الصندوق على طول
                 showCreateSheet = false
                 viewModel.consumeEvent()
+                onAddressCreated(e.addressId)
+            }
+            is HomeEvent.AddressClaimed -> {
+                viewModel.consumeEvent()
+                snackbarHostState.showSnackbar("استلمت ${e.email}")
                 onAddressCreated(e.addressId)
             }
             null -> Unit
@@ -91,6 +98,7 @@ fun HomeScreen(
                     addressCount = state.addresses.size,
                     unreadCount = state.totalUnread,
                     onSettingsClick = onSettingsClick,
+                    onClaimClick = { viewModel.openClaim() },
                     modifier = Modifier.padding(top = padding.calculateTopPadding())
                 )
 
@@ -145,6 +153,7 @@ fun HomeScreen(
         }
     }
 
+    // نافذة الإنشاء
     if (showCreateSheet) {
         CreateAddressSheet(
             domains = viewModel.availableDomains,
@@ -156,6 +165,7 @@ fun HomeScreen(
         )
     }
 
+    // نافذة الخيارات
     selectedForActions?.let { address ->
         AddressActionsSheet(
             address = address,
@@ -171,7 +181,39 @@ fun HomeScreen(
             onRename = { newLabel ->
                 viewModel.renameAddress(address, newLabel)
                 selectedForActions = null
+            },
+            onTransfer = {
+                selectedForActions = null
+                viewModel.openTransfer(address)
             }
+        )
+    }
+
+    // نافذة النقل
+    transferState?.let { transfer ->
+        TransferSheet(
+            email = transfer.email,
+            code = transfer.code,
+            isLoading = transfer.isLoading,
+            expiresAt = transfer.expiresAt,
+            onDismiss = { viewModel.closeTransfer() },
+            onGenerate = { viewModel.generateTransferCode() },
+            onCopy = { code ->
+                copyToClipboard(context, code)
+                scope.launch { snackbarHostState.showSnackbar("اتنسخ الكود") }
+            },
+            onCancel = { viewModel.cancelTransfer() }
+        )
+    }
+
+    // نافذة الاستلام
+    claimState?.let { claim ->
+        ClaimTransferSheet(
+            isLoading = claim.isLoading,
+            error = claim.error,
+            onDismiss = { viewModel.closeClaim() },
+            onClaim = { code -> viewModel.claimAddress(code) },
+            onClearError = { viewModel.clearClaimError() }
         )
     }
 }
@@ -181,6 +223,7 @@ private fun HomeHeader(
     addressCount: Int,
     unreadCount: Int,
     onSettingsClick: () -> Unit,
+    onClaimClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -203,6 +246,25 @@ private fun HomeHeader(
                     color = TextTertiary
                 )
             }
+
+            // زرار استلام عنوان
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(CyanFaint)
+                    .clickable(onClick = onClaimClick),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.SwapHoriz,
+                    contentDescription = "استلام عنوان",
+                    tint = CyanGlow,
+                    modifier = Modifier.size(21.dp)
+                )
+            }
+
+            Spacer(Modifier.width(10.dp))
 
             Box(
                 modifier = Modifier
@@ -283,5 +345,5 @@ private fun CreateFab(
 
 private fun copyToClipboard(context: Context, text: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-    clipboard.setPrimaryClip(ClipData.newPlainText("email", text))
+    clipboard.setPrimaryClip(ClipData.newPlainText("mailio", text))
 }
