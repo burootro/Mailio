@@ -12,29 +12,25 @@ data class MailAddress(
     val isActive: Boolean,
     val isPinned: Boolean,
     val unreadCount: Int,
-    val lastActivityAt: Long
+    val lastActivityAt: Long,
+    val isBlocked: Boolean = false,
+    val blockedReason: String? = null
 ) {
-    /** الجزء اللي قبل @ */
     val localPart: String
         get() = email.substringBefore("@")
 
-    /** الجزء اللي بعد @ */
     val domain: String
         get() = email.substringAfter("@")
 
-    /** الاسم اللي بيتعرض في القائمة */
     val displayName: String
         get() = label?.takeIf { it.isNotBlank() } ?: localPart
 
-    /** دائم ولا مؤقت */
     val isPermanent: Boolean
         get() = expiresAt == null
 
-    /** الوقت المتبقي بالميلي ثانية، null لو دائم */
     fun remainingMillis(now: Long = System.currentTimeMillis()): Long? =
         expiresAt?.let { (it - now).coerceAtLeast(0L) }
 
-    /** انتهت صلاحيته ولا لأ */
     fun isExpired(now: Long = System.currentTimeMillis()): Boolean =
         expiresAt != null && now >= expiresAt
 }
@@ -56,15 +52,12 @@ data class MailMessage(
     val isStarred: Boolean,
     val hasAttachments: Boolean
 ) {
-    /** الاسم المعروض للمرسل */
     val senderDisplay: String
         get() = fromName?.takeIf { it.isNotBlank() } ?: fromEmail.substringBefore("@")
 
-    /** أول حرف - للأفاتار */
     val senderInitial: String
         get() = senderDisplay.trim().firstOrNull()?.uppercase() ?: "?"
 
-    /** العنوان المعروض */
     val displaySubject: String
         get() = subject.takeIf { it.isNotBlank() } ?: "(بدون عنوان)"
 }
@@ -90,7 +83,6 @@ data class MailAttachment(
     val extension: String
         get() = fileName.substringAfterLast('.', "").uppercase()
 
-    /** الحجم بشكل مقروء */
     val readableSize: String
         get() = when {
             sizeBytes < 1024 -> "$sizeBytes B"
@@ -111,4 +103,21 @@ enum class AddressLifetime(
     ONE_DAY("يوم", 24 * 60 * 60 * 1000L),
     ONE_WEEK("أسبوع", 7 * 24 * 60 * 60 * 1000L),
     PERMANENT("دائم", null)
+}
+
+/**
+ * طلب مراجعة
+ */
+data class Appeal(
+    val id: String,
+    val addressEmail: String?,
+    val message: String,
+    val status: String,
+    val adminReply: String?,
+    val createdAt: Long,
+    val repliedAt: Long?
+) {
+    val isPending: Boolean get() = status == "pending"
+    val isApproved: Boolean get() = status == "approved"
+    val isRejected: Boolean get() = status == "rejected"
 }
