@@ -6,9 +6,12 @@ import com.burootro.mailio.data.mapper.toAddressEntities
 import com.burootro.mailio.data.mapper.toEntity
 import com.burootro.mailio.data.prefs.MailioPreferences
 import com.burootro.mailio.data.remote.MailioApi
+import com.burootro.mailio.data.remote.dto.CancelTransferRequest
+import com.burootro.mailio.data.remote.dto.ClaimTransferRequest
 import com.burootro.mailio.data.remote.dto.CreateAddressRequest
 import com.burootro.mailio.data.remote.dto.PushTokenRequest
 import com.burootro.mailio.data.remote.dto.RestoreRequest
+import com.burootro.mailio.data.remote.dto.StartTransferRequest
 import com.burootro.mailio.data.remote.dto.UpdateLabelRequest
 import com.burootro.mailio.domain.model.AddressLifetime
 import com.google.firebase.messaging.FirebaseMessaging
@@ -37,6 +40,12 @@ data class NewMessageInfo(
     val fromName: String,
     val subject: String,
     val preview: String
+)
+
+data class TransferCode(
+    val code: String,
+    val email: String,
+    val expiresAt: Long
 )
 
 @Singleton
@@ -84,9 +93,6 @@ class SyncRepository @Inject constructor(
                 }
         }
 
-    /**
-     * إعادة المحاولة — للعمليات الآمنة بس (اللي التكرار فيها مش بيعمل ضرر)
-     */
     private suspend fun <T> retrying(
         attempts: Int = 3,
         block: suspend () -> T
@@ -159,10 +165,6 @@ class SyncRepository @Inject constructor(
             }
         }
 
-    /**
-     * إنشاء عنوان — محاولة واحدة بس!
-     * التكرار هنا بيعمل عناوين مكررة
-     */
     suspend fun createAddress(
         localPart: String?,
         label: String?,
@@ -191,6 +193,64 @@ class SyncRepository @Inject constructor(
             Result.failure(mapError(e))
         }
     }
+
+    // ===== النقل =====
+
+    /**
+     * طلب كود نقل للعنوان
+     */
+    suspend fun startTransfer(addressId: String): Result<TransferCode> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = api.startTransfer(StartTransferRequest(addressId))
+
+                Result.success(
+                    TransferCode(
+                        code = response.code,
+                        email = response.email,
+                        expiresAt = response.expiresAt
+                    )
+                )
+            } catch (e: Exception) {
+                Result.failure(mapTransferError(e))
+            }
+        }
+
+    suspend fun cancelTransfer(addressId: String): Result<Unit> =
+        withContext(Dispatchers.IO) {
+            try {
+                api.cancelTransfer(CancelTransferRequest(addressId))
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Result.failure(mapTransferError(e))
+            }
+        }
+
+    /**
+     * استلام عنوان بكود نقل
+     */
+    suspend fun claimTransfer(code: String): Result<CreatedAddress> =
+        withContext(Dispatchers.IO) {
+            try {
+                val response = api.claimTransfer(
+                    ClaimTransferRequest(code.trim().uppercase())
+                )
+
+                // نسحب العناوين من السيرفر عشان الجديد يظهر
+                syncAddresses()
+
+                Result.success(
+                    CreatedAddress(
+                        id = response.addressId,
+                        email = response.email
+                    )
+                )
+            } catch (e: Exception) {
+                Result.failure(mapTransferError(e))
+            }
+        }
+
+    // ===== باقي العمليات =====
 
     suspend fun deleteAddress(addressId: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -231,9 +291,6 @@ class SyncRepository @Inject constructor(
             Result.success(Unit)
         }
 
-    /**
-     * المزامنة بتحترم حالة القراءة المحفوظة
-     */
     suspend fun syncMessages(): Result<List<NewMessageInfo>> = withContext(Dispatchers.IO) {
         try {
             val since = prefs.lastSyncAt.first()
@@ -308,9 +365,21 @@ class SyncRepository @Inject constructor(
             }
         }
 
+    /**
+     * مزامنة العناوين — بتمسح اللي اتشال من السيرفر
+     */
     suspend fun syncAddresses(): Result<Int> = withContext(Dispatchers.IO) {
         try {
             val response = api.listAddresses()
+            val serverIds = response.addresses.map { it.id }.toSet()
+
+            // مسح العناوين اللي اتسحبت أو اتنقلت
+            addressDao.getAllOnce().forEach { local ->
+                if (local.id !in serverIds) {
+                    messageDao.deleteByAddress(local.id)
+                    addressDao.deleteById(local.id)
+                }
+            }
 
             response.addresses.forEach { dto ->
                 val existing = addressDao.getById(dto.id)
@@ -349,6 +418,18 @@ class SyncRepository @Inject constructor(
             message.contains("429") -> Exception("وصلت للحد الأقصى، استنى شوية")
             message.contains("400") -> Exception("الاسم مش صالح")
             else -> Exception("السيرفر بطيء دلوقتي، جرب تاني")
+        }
+    }
+
+    private fun mapTransferError(e: Exception): Exception {
+        val message = e.message ?: ""
+        return when {
+            message.contains("404") -> Exception("الكود ده مش موجود")
+            message.contains("410") -> Exception("الكود انتهت صلاحيته")
+            message.contains("403") -> Exception("العنوان ده موقوف")
+            message.contains("400") -> Exception("الكود مش صالح")
+            message.contains("429") -> Exception("محاولات كتير، استنى شوية")
+            else -> Exception("مفيش اتصال بالسيرفر")
         }
     }
 }
