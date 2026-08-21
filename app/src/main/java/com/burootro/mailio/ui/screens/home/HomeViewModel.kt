@@ -29,9 +29,25 @@ data class HomeUiState(
     val isConnected: Boolean = true
 )
 
+/** حالة نافذة النقل */
+data class TransferState(
+    val addressId: String = "",
+    val email: String = "",
+    val code: String? = null,
+    val expiresAt: Long? = null,
+    val isLoading: Boolean = false
+)
+
+/** حالة نافذة الاستلام */
+data class ClaimState(
+    val isLoading: Boolean = false,
+    val error: String? = null
+)
+
 sealed interface HomeEvent {
     data class ShowMessage(val text: String) : HomeEvent
     data class AddressCreated(val addressId: String, val email: String) : HomeEvent
+    data class AddressClaimed(val addressId: String, val email: String) : HomeEvent
 }
 
 @HiltViewModel
@@ -74,14 +90,17 @@ class HomeViewModel @Inject constructor(
     private val _isCreating = MutableStateFlow(false)
     val isCreating: StateFlow<Boolean> = _isCreating.asStateFlow()
 
+    private val _transferState = MutableStateFlow<TransferState?>(null)
+    val transferState: StateFlow<TransferState?> = _transferState.asStateFlow()
+
+    private val _claimState = MutableStateFlow<ClaimState?>(null)
+    val claimState: StateFlow<ClaimState?> = _claimState.asStateFlow()
+
     init {
         viewModelScope.launch {
             prefs.getOrCreateDeviceId()
             syncRepository.wakeServer()
-
-            // تسجيل توكن الإشعارات
             syncRepository.registerPushToken()
-
             syncIfRegistered()
         }
 
@@ -123,27 +142,25 @@ class HomeViewModel @Inject constructor(
                         )
                     }
                 },
-                onFailure = {
-                    _isConnected.value = false
-                }
+                onFailure = { _isConnected.value = false }
             )
 
             _isSyncing.value = false
         }
     }
 
-    /**
-     * مزامنة صامتة — من غير إشعارات، لأن Firebase بقى بيتولاها
-     */
     private suspend fun quietSync() {
         if (_isSyncing.value) return
         if (prefs.getRecoveryKey() == null) return
 
+        syncRepository.syncAddresses()
         syncRepository.syncMessages().fold(
             onSuccess = { _isConnected.value = true },
             onFailure = { _isConnected.value = false }
         )
     }
+
+    // ===== إنشاء العناوين =====
 
     fun createAddress(
         localPart: String? = null,
@@ -166,10 +183,7 @@ class HomeViewModel @Inject constructor(
             ).fold(
                 onSuccess = { created ->
                     _isConnected.value = true
-                    _events.value = HomeEvent.AddressCreated(
-                        addressId = created.id,
-                        email = created.email
-                    )
+                    _events.value = HomeEvent.AddressCreated(created.id, created.email)
                 },
                 onFailure = { error ->
                     val recovered = recoverCreatedAddress(before)
@@ -177,8 +191,8 @@ class HomeViewModel @Inject constructor(
                     if (recovered != null) {
                         _isConnected.value = true
                         _events.value = HomeEvent.AddressCreated(
-                            addressId = recovered.id,
-                            email = recovered.email
+                            recovered.id,
+                            recovered.email
                         )
                     } else {
                         _events.value = HomeEvent.ShowMessage(
@@ -206,6 +220,91 @@ class HomeViewModel @Inject constructor(
         }
         return null
     }
+
+    // ===== النقل =====
+
+    fun openTransfer(address: MailAddress) {
+        _transferState.value = TransferState(
+            addressId = address.id,
+            email = address.email
+        )
+    }
+
+    fun closeTransfer() {
+        _transferState.value = null
+    }
+
+    fun generateTransferCode() {
+        val current = _transferState.value ?: return
+        if (current.isLoading) return
+
+        viewModelScope.launch {
+            _transferState.value = current.copy(isLoading = true)
+
+            syncRepository.startTransfer(current.addressId).fold(
+                onSuccess = { result ->
+                    _transferState.value = current.copy(
+                        code = result.code,
+                        expiresAt = result.expiresAt,
+                        isLoading = false
+                    )
+                },
+                onFailure = { error ->
+                    _transferState.value = current.copy(isLoading = false)
+                    _events.value = HomeEvent.ShowMessage(
+                        error.message ?: "فشل توليد الكود"
+                    )
+                }
+            )
+        }
+    }
+
+    fun cancelTransfer() {
+        val current = _transferState.value ?: return
+
+        viewModelScope.launch {
+            syncRepository.cancelTransfer(current.addressId)
+            _transferState.value = null
+            _events.value = HomeEvent.ShowMessage("اتلغى النقل")
+        }
+    }
+
+    // ===== الاستلام =====
+
+    fun openClaim() {
+        _claimState.value = ClaimState()
+    }
+
+    fun closeClaim() {
+        _claimState.value = null
+    }
+
+    fun clearClaimError() {
+        _claimState.value = _claimState.value?.copy(error = null)
+    }
+
+    fun claimAddress(code: String) {
+        val current = _claimState.value ?: return
+        if (current.isLoading) return
+
+        viewModelScope.launch {
+            _claimState.value = ClaimState(isLoading = true)
+
+            syncRepository.claimTransfer(code).fold(
+                onSuccess = { claimed ->
+                    _claimState.value = null
+                    _events.value = HomeEvent.AddressClaimed(claimed.id, claimed.email)
+                },
+                onFailure = { error ->
+                    _claimState.value = ClaimState(
+                        error = error.message ?: "فشل الاستلام"
+                    )
+                }
+            )
+        }
+    }
+
+    // ===== باقي العمليات =====
 
     fun togglePin(address: MailAddress) {
         viewModelScope.launch {
