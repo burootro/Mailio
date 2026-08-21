@@ -16,29 +16,20 @@ data class AddressEntity(
     @PrimaryKey
     val id: String,
 
-    /** العنوان الكامل: something@domain.com */
     val email: String,
-
-    /** الاسم اللي المستخدم بيسميه بيه العنوان */
     val label: String? = null,
-
-    /** وقت الإنشاء - ميلي ثانية */
     val createdAt: Long,
-
-    /** وقت انتهاء الصلاحية - null يعني دائم */
     val expiresAt: Long? = null,
-
-    /** مفعّل ولا موقوف */
     val isActive: Boolean = true,
-
-    /** مثبت في أول القائمة */
     val isPinned: Boolean = false,
-
-    /** عدد الرسايل غير المقروءة */
     val unreadCount: Int = 0,
+    val lastActivityAt: Long = createdAt,
 
-    /** آخر نشاط - للترتيب */
-    val lastActivityAt: Long = createdAt
+    /** موقوف من الأدمن */
+    val isBlocked: Boolean = false,
+
+    /** سبب الإيقاف */
+    val blockedReason: String? = null
 )
 
 /**
@@ -63,29 +54,16 @@ data class MessageEntity(
     @PrimaryKey
     val id: String,
 
-    /** العنوان اللي وصلت عليه */
     val addressId: String,
-
     val fromEmail: String,
     val fromName: String? = null,
-
     val subject: String,
-
-    /** مقتطف للعرض في القائمة */
     val preview: String,
-
-    /** النص العادي */
     val bodyText: String? = null,
-
-    /** النسخة HTML */
     val bodyHtml: String? = null,
-
     val receivedAt: Long,
-
     val isRead: Boolean = false,
     val isStarred: Boolean = false,
-
-    /** فيه مرفقات ولا لأ */
     val hasAttachments: Boolean = false
 )
 
@@ -109,14 +87,9 @@ data class AttachmentEntity(
     val id: String,
 
     val messageId: String,
-
     val fileName: String,
     val mimeType: String,
     val sizeBytes: Long,
-
-    /** رابط التحميل من السيرفر */
     val remoteUrl: String? = null,
-
-    /** المسار المحلي بعد التحميل */
     val localPath: String? = null
 )
