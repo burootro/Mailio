@@ -15,7 +15,7 @@ import com.burootro.mailio.data.local.entity.MessageEntity
         MessageEntity::class,
         AttachmentEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class MailioDatabase : RoomDatabase() {
