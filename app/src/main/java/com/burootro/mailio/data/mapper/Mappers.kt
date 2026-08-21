@@ -18,7 +18,9 @@ fun AddressEntity.toDomain(): MailAddress = MailAddress(
     isActive = isActive,
     isPinned = isPinned,
     unreadCount = unreadCount,
-    lastActivityAt = lastActivityAt
+    lastActivityAt = lastActivityAt,
+    isBlocked = isBlocked,
+    blockedReason = blockedReason
 )
 
 fun MailAddress.toEntity(): AddressEntity = AddressEntity(
@@ -30,7 +32,9 @@ fun MailAddress.toEntity(): AddressEntity = AddressEntity(
     isActive = isActive,
     isPinned = isPinned,
     unreadCount = unreadCount,
-    lastActivityAt = lastActivityAt
+    lastActivityAt = lastActivityAt,
+    isBlocked = isBlocked,
+    blockedReason = blockedReason
 )
 
 fun List<AddressEntity>.toAddressDomainList(): List<MailAddress> = map { it.toDomain() }
