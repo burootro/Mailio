@@ -1,11 +1,14 @@
 package com.burootro.mailio.data.remote
 
 import com.burootro.mailio.data.remote.dto.AddressListResponse
+import com.burootro.mailio.data.remote.dto.AppealListResponse
 import com.burootro.mailio.data.remote.dto.CancelTransferRequest
 import com.burootro.mailio.data.remote.dto.ClaimTransferRequest
 import com.burootro.mailio.data.remote.dto.ClaimTransferResponse
 import com.burootro.mailio.data.remote.dto.CreateAddressRequest
 import com.burootro.mailio.data.remote.dto.CreateAddressResponse
+import com.burootro.mailio.data.remote.dto.CreateAppealRequest
+import com.burootro.mailio.data.remote.dto.CreateAppealResponse
 import com.burootro.mailio.data.remote.dto.GoogleSignInRequest
 import com.burootro.mailio.data.remote.dto.GoogleSignInResponse
 import com.burootro.mailio.data.remote.dto.MeResponse
@@ -49,6 +52,14 @@ interface MailioApi {
 
     @POST("api/push/register")
     suspend fun registerPushToken(@Body body: PushTokenRequest): OkResponse
+
+    // ===== طلبات المراجعة =====
+
+    @POST("api/appeals")
+    suspend fun createAppeal(@Body body: CreateAppealRequest): CreateAppealResponse
+
+    @GET("api/appeals/mine")
+    suspend fun myAppeals(): AppealListResponse
 
     // ===== نقل العناوين =====
 
