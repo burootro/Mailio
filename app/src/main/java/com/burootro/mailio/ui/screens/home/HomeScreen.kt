@@ -44,6 +44,7 @@ fun HomeScreen(
     val event by viewModel.events.collectAsStateWithLifecycle()
     val transferState by viewModel.transferState.collectAsStateWithLifecycle()
     val claimState by viewModel.claimState.collectAsStateWithLifecycle()
+    val appealState by viewModel.appealState.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -144,7 +145,8 @@ fun HomeScreen(
                                     scope.launch {
                                         snackbarHostState.showSnackbar("اتنسخ العنوان")
                                     }
-                                }
+                                },
+                                onAppeal = { viewModel.openAppeal(address) }
                             )
                         }
                     }
@@ -216,6 +218,20 @@ fun HomeScreen(
             onClearError = { viewModel.clearClaimError() }
         )
     }
+
+    // نافذة طلب المراجعة
+    appealState?.let { appeal ->
+        AppealSheet(
+            email = appeal.email,
+            blockedReason = appeal.blockedReason,
+            isLoading = appeal.isLoading,
+            error = appeal.error,
+            isSubmitted = appeal.isSubmitted,
+            onDismiss = { viewModel.closeAppeal() },
+            onSubmit = { message -> viewModel.submitAppeal(message) },
+            onClearError = { viewModel.clearAppealError() }
+        )
+    }
 }
 
 @Composable
@@ -247,7 +263,6 @@ private fun HomeHeader(
                 )
             }
 
-            // زرار استلام عنوان
             Box(
                 modifier = Modifier
                     .size(44.dp)
