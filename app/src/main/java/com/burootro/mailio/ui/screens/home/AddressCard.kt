@@ -24,7 +24,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.style.TextOverflow
@@ -75,7 +74,7 @@ fun AddressCard(
             .fillMaxWidth()
             .scale(scale)
             .clip(shape)
-            .background(if (blocked) CardSurface else CardSurface)
+            .background(CardSurface)
             .background(MailioGradients.cardSheen)
             .border(
                 width = 1.dp,
@@ -97,17 +96,20 @@ fun AddressCard(
         Column {
 
             Row(verticalAlignment = Alignment.CenterVertically) {
+
+                val avatarModifier = Modifier
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(15.dp))
+                    .then(
+                        when {
+                            blocked -> Modifier.background(ErrorRose.copy(alpha = 0.15f))
+                            hasUnread -> Modifier.background(MailioGradients.primaryDiagonal)
+                            else -> Modifier.background(MailioGradients.cyanSoft)
+                        }
+                    )
+
                 Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(RoundedCornerShape(15.dp))
-                        .background(
-                            when {
-                                blocked -> ErrorRose.copy(alpha = 0.15f)
-                                hasUnread -> MailioGradients.primaryDiagonal
-                                else -> MailioGradients.cyanSoft
-                            }
-                        ),
+                    modifier = avatarModifier,
                     contentAlignment = Alignment.Center
                 ) {
                     if (blocked) {
@@ -187,7 +189,6 @@ fun AddressCard(
                 }
             }
 
-            // ===== شريط الإيقاف =====
             if (blocked) {
                 Spacer(Modifier.height(14.dp))
 
