@@ -29,7 +29,6 @@ data class HomeUiState(
     val isConnected: Boolean = true
 )
 
-/** حالة نافذة النقل */
 data class TransferState(
     val addressId: String = "",
     val email: String = "",
@@ -38,10 +37,18 @@ data class TransferState(
     val isLoading: Boolean = false
 )
 
-/** حالة نافذة الاستلام */
 data class ClaimState(
     val isLoading: Boolean = false,
     val error: String? = null
+)
+
+data class AppealState(
+    val addressId: String = "",
+    val email: String = "",
+    val blockedReason: String? = null,
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val isSubmitted: Boolean = false
 )
 
 sealed interface HomeEvent {
@@ -96,6 +103,9 @@ class HomeViewModel @Inject constructor(
     private val _claimState = MutableStateFlow<ClaimState?>(null)
     val claimState: StateFlow<ClaimState?> = _claimState.asStateFlow()
 
+    private val _appealState = MutableStateFlow<AppealState?>(null)
+    val appealState: StateFlow<AppealState?> = _appealState.asStateFlow()
+
     init {
         viewModelScope.launch {
             prefs.getOrCreateDeviceId()
@@ -104,9 +114,10 @@ class HomeViewModel @Inject constructor(
             syncIfRegistered()
         }
 
+        // مزامنة كل 10 ثواني — أسرع عشان الإيقاف والسحب يظهروا فوراً
         viewModelScope.launch {
             while (true) {
-                delay(20_000)
+                delay(10_000)
                 quietSync()
             }
         }
@@ -219,6 +230,48 @@ class HomeViewModel @Inject constructor(
             }
         }
         return null
+    }
+
+    // ===== طلبات المراجعة =====
+
+    fun openAppeal(address: MailAddress) {
+        _appealState.value = AppealState(
+            addressId = address.id,
+            email = address.email,
+            blockedReason = address.blockedReason
+        )
+    }
+
+    fun closeAppeal() {
+        _appealState.value = null
+    }
+
+    fun clearAppealError() {
+        _appealState.value = _appealState.value?.copy(error = null)
+    }
+
+    fun submitAppeal(message: String) {
+        val current = _appealState.value ?: return
+        if (current.isLoading) return
+
+        viewModelScope.launch {
+            _appealState.value = current.copy(isLoading = true, error = null)
+
+            syncRepository.submitAppeal(current.addressId, message).fold(
+                onSuccess = {
+                    _appealState.value = current.copy(
+                        isLoading = false,
+                        isSubmitted = true
+                    )
+                },
+                onFailure = { error ->
+                    _appealState.value = current.copy(
+                        isLoading = false,
+                        error = error.message ?: "فشل الإرسال"
+                    )
+                }
+            )
+        }
     }
 
     // ===== النقل =====
