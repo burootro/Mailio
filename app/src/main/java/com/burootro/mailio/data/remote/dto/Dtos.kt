@@ -43,6 +43,38 @@ data class PushTokenRequest(
     val token: String
 )
 
+// ===== طلبات المراجعة =====
+
+@Serializable
+data class CreateAppealRequest(
+    val addressId: String? = null,
+    val message: String
+)
+
+@Serializable
+data class CreateAppealResponse(
+    val ok: Boolean = true,
+    val appealId: String,
+    val message: String = ""
+)
+
+@Serializable
+data class AppealDto(
+    val id: String,
+    @SerialName("address_id") val addressId: String? = null,
+    @SerialName("address_email") val addressEmail: String? = null,
+    val message: String,
+    val status: String,
+    @SerialName("admin_reply") val adminReply: String? = null,
+    @SerialName("created_at") val createdAt: Long,
+    @SerialName("replied_at") val repliedAt: Long? = null
+)
+
+@Serializable
+data class AppealListResponse(
+    val appeals: List<AppealDto> = emptyList()
+)
+
 // ===== العناوين =====
 
 @Serializable
@@ -56,6 +88,7 @@ data class AddressDto(
     @SerialName("expires_at") val expiresAt: Long? = null,
     @SerialName("is_active") val isActive: Boolean = true,
     @SerialName("is_blocked") val isBlocked: Boolean = false,
+    @SerialName("revoked_reason") val revokedReason: String? = null,
     @SerialName("message_count") val messageCount: Int = 0,
     @SerialName("last_message_at") val lastMessageAt: Long? = null
 )
