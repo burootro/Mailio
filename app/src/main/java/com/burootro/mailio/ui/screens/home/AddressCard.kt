@@ -14,6 +14,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Schedule
@@ -23,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,6 +41,7 @@ fun AddressCard(
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onCopy: () -> Unit,
+    onAppeal: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -65,47 +68,62 @@ fun AddressCard(
 
     val shape = RoundedCornerShape(22.dp)
     val hasUnread = address.unreadCount > 0
+    val blocked = address.isBlocked
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .scale(scale)
             .clip(shape)
-            .background(CardSurface)
+            .background(if (blocked) CardSurface else CardSurface)
             .background(MailioGradients.cardSheen)
             .border(
                 width = 1.dp,
-                color = if (hasUnread) NeonCyan.copy(alpha = 0.4f) else BorderSubtle,
+                color = when {
+                    blocked -> ErrorRose.copy(alpha = 0.45f)
+                    hasUnread -> NeonCyan.copy(alpha = 0.4f)
+                    else -> BorderSubtle
+                },
                 shape = shape
             )
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = onClick,
+                onClick = { if (!blocked) onClick() },
                 onLongClick = onLongClick
             )
             .padding(18.dp)
     ) {
         Column {
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
                         .size(46.dp)
                         .clip(RoundedCornerShape(15.dp))
                         .background(
-                            if (hasUnread) MailioGradients.primaryDiagonal
-                            else MailioGradients.cyanSoft
+                            when {
+                                blocked -> ErrorRose.copy(alpha = 0.15f)
+                                hasUnread -> MailioGradients.primaryDiagonal
+                                else -> MailioGradients.cyanSoft
+                            }
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = address.displayName.take(1).uppercase(),
-                        style = MaterialTheme.typography.titleLarge,
-                        color = if (hasUnread) DeepVoid else CyanGlow
-                    )
+                    if (blocked) {
+                        Icon(
+                            imageVector = Icons.Rounded.Block,
+                            contentDescription = null,
+                            tint = ErrorRose,
+                            modifier = Modifier.size(21.dp)
+                        )
+                    } else {
+                        Text(
+                            text = address.displayName.take(1).uppercase(),
+                            style = MaterialTheme.typography.titleLarge,
+                            color = if (hasUnread) DeepVoid else CyanGlow
+                        )
+                    }
                 }
 
                 Spacer(Modifier.width(14.dp))
@@ -115,13 +133,13 @@ fun AddressCard(
                         Text(
                             text = address.displayName,
                             style = MaterialTheme.typography.titleMedium,
-                            color = TextPrimary,
+                            color = if (blocked) TextTertiary else TextPrimary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
                         )
 
-                        if (address.isPinned) {
+                        if (address.isPinned && !blocked) {
                             Spacer(Modifier.width(6.dp))
                             Icon(
                                 imageVector = Icons.Rounded.PushPin,
@@ -139,7 +157,7 @@ fun AddressCard(
                         style = EmailAddressStyle.copy(
                             fontSize = MaterialTheme.typography.bodySmall.fontSize
                         ),
-                        color = TextTertiary,
+                        color = if (blocked) TextDisabled else TextTertiary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -148,7 +166,7 @@ fun AddressCard(
                 Spacer(Modifier.width(10.dp))
 
                 AnimatedVisibility(
-                    visible = hasUnread,
+                    visible = hasUnread && !blocked,
                     enter = fadeIn() + scaleIn(),
                     exit = fadeOut() + scaleOut()
                 ) {
@@ -169,47 +187,98 @@ fun AddressCard(
                 }
             }
 
-            Spacer(Modifier.height(14.dp))
+            // ===== شريط الإيقاف =====
+            if (blocked) {
+                Spacer(Modifier.height(14.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (address.isPermanent) {
-                    PulsingDot(color = SuccessGreen, size = 7.dp)
-                    Spacer(Modifier.width(8.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(ErrorRose.copy(alpha = 0.10f))
+                        .padding(13.dp)
+                ) {
                     Text(
-                        text = "دائم",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = SuccessGreen
+                        text = "العنوان ده موقوف",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = ErrorRose
                     )
-                } else {
-                    val expired = remaining == null || remaining == 0L
-                    Icon(
-                        imageVector = Icons.Rounded.Schedule,
-                        contentDescription = null,
-                        tint = if (expired) ErrorRose else WarningAmber,
-                        modifier = Modifier.size(13.dp)
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = TimeUtils.countdown(remaining ?: 0L),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (expired) ErrorRose else WarningAmber
-                    )
+
+                    if (!address.blockedReason.isNullOrBlank()) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = address.blockedReason,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextTertiary
+                        )
+                    }
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(CyanFaint)
+                            .border(
+                                1.dp,
+                                NeonCyan.copy(alpha = 0.3f),
+                                RoundedCornerShape(12.dp)
+                            )
+                            .combinedClickable(onClick = onAppeal)
+                            .padding(vertical = 11.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "طلب مراجعة",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = CyanGlow
+                        )
+                    }
                 }
+            } else {
+                Spacer(Modifier.height(14.dp))
 
-                Spacer(Modifier.weight(1f))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (address.isPermanent) {
+                        PulsingDot(color = SuccessGreen, size = 7.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "دائم",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = SuccessGreen
+                        )
+                    } else {
+                        val expired = remaining == null || remaining == 0L
+                        Icon(
+                            imageVector = Icons.Rounded.Schedule,
+                            contentDescription = null,
+                            tint = if (expired) ErrorRose else WarningAmber,
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = TimeUtils.countdown(remaining ?: 0L),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (expired) ErrorRose else WarningAmber
+                        )
+                    }
 
-                Text(
-                    text = TimeUtils.relativeShort(address.lastActivityAt),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextDisabled
-                )
+                    Spacer(Modifier.weight(1f))
 
-                Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = TimeUtils.relativeShort(address.lastActivityAt),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextDisabled
+                    )
 
-                CopyIconButton(onCopy = onCopy)
+                    Spacer(Modifier.width(12.dp))
+
+                    CopyIconButton(onCopy = onCopy)
+                }
             }
         }
     }
