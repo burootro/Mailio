@@ -13,6 +13,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.burootro.mailio.ui.screens.appeals.MyAppealsScreen
+import com.burootro.mailio.ui.screens.contact.ContactScreen
 import com.burootro.mailio.ui.screens.home.HomeScreen
 import com.burootro.mailio.ui.screens.inbox.InboxScreen
 import com.burootro.mailio.ui.screens.message.MessageScreen
@@ -28,6 +29,7 @@ object Routes {
     const val MESSAGE = "message"
     const val SETTINGS = "settings"
     const val APPEALS = "appeals"
+    const val CONTACT = "contact"
 }
 
 @Composable
@@ -193,6 +195,9 @@ fun MailioNavigation(
                 },
                 onAppealsClick = {
                     navController.navigate(Routes.APPEALS)
+                },
+                onContactClick = {
+                    navController.navigate(Routes.CONTACT)
                 }
             )
         }
@@ -213,6 +218,26 @@ fun MailioNavigation(
             }
         ) {
             MyAppealsScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Routes.CONTACT,
+            enterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { it },
+                    animationSpec = tween(400)
+                ) + fadeIn(tween(300))
+            },
+            popExitTransition = {
+                slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(400)
+                ) + fadeOut(tween(300))
+            }
+        ) {
+            ContactScreen(
                 onBack = { navController.popBackStack() }
             )
         }
