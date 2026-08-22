@@ -12,7 +12,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.AutoDelete
+import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.CleaningServices
+import androidx.compose.material.icons.rounded.Gavel
 import androidx.compose.material.icons.rounded.Logout
 import androidx.compose.material.icons.rounded.Mail
 import androidx.compose.material.icons.rounded.Notifications
@@ -40,6 +42,7 @@ private val autoDeleteOptions = listOf(0L, 7L, 14L, 30L)
 fun SettingsScreen(
     onBack: () -> Unit,
     onSignedOut: () -> Unit,
+    onAppealsClick: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -146,6 +149,20 @@ fun SettingsScreen(
                         modifier = Modifier.weight(1f)
                     )
                 }
+
+                Spacer(Modifier.height(26.dp))
+
+                // طلبات المراجعة
+                SectionTitle("الدعم")
+                Spacer(Modifier.height(10.dp))
+
+                NavRow(
+                    icon = Icons.Rounded.Gavel,
+                    title = "طلبات المراجعة",
+                    subtitle = "تابع حالة طلباتك وردود الإدارة",
+                    tint = WarningAmber,
+                    onClick = onAppealsClick
+                )
 
                 Spacer(Modifier.height(26.dp))
 
@@ -272,6 +289,63 @@ fun SettingsScreen(
                 showSignOutConfirm = false
                 viewModel.signOut()
             }
+        )
+    }
+}
+
+@Composable
+private fun NavRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    tint: Color,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(CardSurface)
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(tint.copy(alpha = 0.14f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(19.dp)
+            )
+        }
+
+        Spacer(Modifier.width(14.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                color = TextPrimary
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = TextTertiary
+            )
+        }
+
+        Icon(
+            imageVector = Icons.Rounded.ChevronLeft,
+            contentDescription = null,
+            tint = TextDisabled,
+            modifier = Modifier.size(20.dp)
         )
     }
 }
