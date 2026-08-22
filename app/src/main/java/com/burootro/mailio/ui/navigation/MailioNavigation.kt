@@ -12,6 +12,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.burootro.mailio.ui.screens.appeals.MyAppealsScreen
 import com.burootro.mailio.ui.screens.home.HomeScreen
 import com.burootro.mailio.ui.screens.inbox.InboxScreen
 import com.burootro.mailio.ui.screens.message.MessageScreen
@@ -26,6 +27,7 @@ object Routes {
     const val INBOX = "inbox"
     const val MESSAGE = "message"
     const val SETTINGS = "settings"
+    const val APPEALS = "appeals"
 }
 
 @Composable
@@ -100,9 +102,7 @@ fun MailioNavigation(
 
         composable(
             route = "${Routes.INBOX}/{addressId}",
-            arguments = listOf(
-                navArgument("addressId") { type = NavType.StringType }
-            ),
+            arguments = listOf(navArgument("addressId") { type = NavType.StringType }),
             enterTransition = {
                 slideInHorizontally(
                     initialOffsetX = { it },
@@ -138,9 +138,7 @@ fun MailioNavigation(
 
         composable(
             route = "${Routes.MESSAGE}/{messageId}",
-            arguments = listOf(
-                navArgument("messageId") { type = NavType.StringType }
-            ),
+            arguments = listOf(navArgument("messageId") { type = NavType.StringType }),
             enterTransition = {
                 slideInHorizontally(
                     initialOffsetX = { it },
@@ -167,6 +165,18 @@ fun MailioNavigation(
                     animationSpec = tween(400)
                 ) + fadeIn(tween(300))
             },
+            exitTransition = {
+                slideOutHorizontally(
+                    targetOffsetX = { -it / 4 },
+                    animationSpec = tween(400)
+                ) + fadeOut(tween(250))
+            },
+            popEnterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { -it / 4 },
+                    animationSpec = tween(400)
+                ) + fadeIn(tween(400))
+            },
             popExitTransition = {
                 slideOutHorizontally(
                     targetOffsetX = { it },
@@ -180,7 +190,30 @@ fun MailioNavigation(
                     navController.navigate(Routes.SIGN_IN) {
                         popUpTo(0) { inclusive = true }
                     }
+                },
+                onAppealsClick = {
+                    navController.navigate(Routes.APPEALS)
                 }
+            )
+        }
+
+        composable(
+            route = Routes.APPEALS,
+            enterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { it },
+                    animationSpec = tween(400)
+                ) + fadeIn(tween(300))
+            },
+            popExitTransition = {
+                slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(400)
+                ) + fadeOut(tween(300))
+            }
+        ) {
+            MyAppealsScreen(
+                onBack = { navController.popBackStack() }
             )
         }
     }
