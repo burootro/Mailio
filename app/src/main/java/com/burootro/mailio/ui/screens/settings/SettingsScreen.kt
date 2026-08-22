@@ -19,6 +19,7 @@ import androidx.compose.material.icons.rounded.Logout
 import androidx.compose.material.icons.rounded.Mail
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.SupportAgent
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -43,6 +44,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onSignedOut: () -> Unit,
     onAppealsClick: () -> Unit,
+    onContactClick: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -152,8 +154,17 @@ fun SettingsScreen(
 
                 Spacer(Modifier.height(26.dp))
 
-                // طلبات المراجعة
                 SectionTitle("الدعم")
+                Spacer(Modifier.height(10.dp))
+
+                NavRow(
+                    icon = Icons.Rounded.SupportAgent,
+                    title = "تواصل معانا",
+                    subtitle = "مشكلة أو اقتراح؟ كلمنا",
+                    tint = CyanGlow,
+                    onClick = onContactClick
+                )
+
                 Spacer(Modifier.height(10.dp))
 
                 NavRow(
