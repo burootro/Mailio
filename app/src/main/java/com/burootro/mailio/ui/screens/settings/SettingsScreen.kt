@@ -1,5 +1,7 @@
 package com.burootro.mailio.ui.screens.settings
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -19,6 +21,7 @@ import androidx.compose.material.icons.rounded.Logout
 import androidx.compose.material.icons.rounded.Mail
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.PrivacyTip
 import androidx.compose.material.icons.rounded.SupportAgent
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +31,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -38,6 +42,7 @@ import com.burootro.mailio.ui.components.OutlineGlowButton
 import com.burootro.mailio.ui.theme.*
 
 private val autoDeleteOptions = listOf(0L, 7L, 14L, 30L)
+private const val PRIVACY_URL = "https://mailio-privacy.pages.dev"
 
 @Composable
 fun SettingsScreen(
@@ -51,6 +56,7 @@ fun SettingsScreen(
     val isSigningOut by viewModel.isSigningOut.collectAsStateWithLifecycle()
     val event by viewModel.events.collectAsStateWithLifecycle()
 
+    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     var showSignOutConfirm by remember { mutableStateOf(false) }
 
@@ -173,6 +179,24 @@ fun SettingsScreen(
                     subtitle = "تابع حالة طلباتك وردود الإدارة",
                     tint = WarningAmber,
                     onClick = onAppealsClick
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                NavRow(
+                    icon = Icons.Rounded.PrivacyTip,
+                    title = "سياسة الخصوصية",
+                    subtitle = "إيه البيانات اللي بنجمعها وليه",
+                    tint = ElectricViolet,
+                    onClick = {
+                        try {
+                            context.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_URL))
+                            )
+                        } catch (e: Exception) {
+                            // مفيش متصفح
+                        }
+                    }
                 )
 
                 Spacer(Modifier.height(26.dp))
