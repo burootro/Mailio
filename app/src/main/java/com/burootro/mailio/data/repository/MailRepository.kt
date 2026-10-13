@@ -189,7 +189,6 @@ class MailRepository @Inject constructor(
     private suspend fun refreshAddressState(addressId: String) {
         val unread = messageDao.countUnread(addressId)
         addressDao.setUnreadCount(addressId, unread)
-        addressDao.touch(addressId, System.currentTimeMillis())
     }
 
     private fun generateLocalPart(): String {

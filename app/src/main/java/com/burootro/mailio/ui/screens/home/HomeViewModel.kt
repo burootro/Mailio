@@ -148,7 +148,7 @@ class HomeViewModel @Inject constructor(
         _isSyncing.value = true
 
         syncRepository.syncAddresses()
-        syncRepository.syncMessages().fold(
+        syncRepository.syncMessages(fromScratch = true).fold(
             onSuccess = { _isConnected.value = true },
             onFailure = { _isConnected.value = false }
         )

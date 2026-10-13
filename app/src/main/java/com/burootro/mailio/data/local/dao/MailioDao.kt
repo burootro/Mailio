@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import androidx.room.Upsert
 import com.burootro.mailio.data.local.entity.AddressEntity
 import com.burootro.mailio.data.local.entity.AttachmentEntity
 import com.burootro.mailio.data.local.entity.MessageEntity
@@ -31,10 +32,12 @@ interface AddressDao {
     @Query("SELECT COUNT(*) FROM addresses")
     fun observeCount(): Flow<Int>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    // Upsert (update in place) — REPLACE would delete the row first and the
+    // ON DELETE CASCADE would wipe every message of the address on each sync.
+    @Upsert
     suspend fun insert(address: AddressEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertAll(addresses: List<AddressEntity>)
 
     @Update
@@ -100,10 +103,11 @@ interface MessageDao {
     )
     fun search(query: String): Flow<List<MessageEntity>>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    // Upsert keeps attachments (REPLACE would cascade-delete them).
+    @Upsert
     suspend fun insert(message: MessageEntity)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Upsert
     suspend fun insertAll(messages: List<MessageEntity>)
 
     @Query("UPDATE messages SET isRead = :read WHERE id = :id")

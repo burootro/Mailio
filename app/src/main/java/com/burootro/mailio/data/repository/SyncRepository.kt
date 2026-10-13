@@ -323,9 +323,13 @@ class SyncRepository @Inject constructor(
             Result.success(Unit)
         }
 
-    suspend fun syncMessages(): Result<List<NewMessageInfo>> = withContext(Dispatchers.IO) {
+    /**
+     * [fromScratch] re-downloads everything (used once at app start) so the local
+     * copy heals itself if anything was ever lost.
+     */
+    suspend fun syncMessages(fromScratch: Boolean = false): Result<List<NewMessageInfo>> = withContext(Dispatchers.IO) {
         try {
-            val since = prefs.lastSyncAt.first()
+            val since = if (fromScratch) 0L else prefs.lastSyncAt.first()
             val response = api.syncMessages(since = since)
 
             val newOnes = mutableListOf<NewMessageInfo>()
@@ -435,7 +439,6 @@ class SyncRepository @Inject constructor(
     private suspend fun refreshUnreadCount(addressId: String) {
         val unread = messageDao.countUnread(addressId)
         addressDao.setUnreadCount(addressId, unread)
-        addressDao.touch(addressId, System.currentTimeMillis())
     }
 
     private suspend fun refreshAllUnreadCounts() {

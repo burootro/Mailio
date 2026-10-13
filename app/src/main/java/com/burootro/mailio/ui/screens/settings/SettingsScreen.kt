@@ -270,7 +270,6 @@ fun SettingsScreen(
                 BrandMark(size = 40.dp)
                 Spacer(Modifier.height(8.dp))
                 Text("Mailio ${appVersion(context)}", style = MaterialTheme.typography.labelMedium, color = Mx.Text3)
-                Text("معمول بحب في مصر 🇪🇬", style = MaterialTheme.typography.labelSmall, color = Mx.Text4)
             }
             Spacer(Modifier.height(30.dp))
         }
