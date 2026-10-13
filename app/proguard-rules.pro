@@ -1,35 +1,33 @@
-# Kotlin Serialization
--keepattributes *Annotation*, InnerClasses
+# ---------------------------------------------------------------
+# Mailio release rules
+# Libraries (Retrofit, OkHttp, kotlinx.serialization, Room, Hilt,
+# Firebase, Play Services, Coil) ship their own consumer rules.
+# We only keep our own code intact, so nothing reflective breaks.
+# ---------------------------------------------------------------
+
+# Keep readable stack traces (crash reports stay useful). Shrinking still removes unused code.
+-dontobfuscate
+-keepattributes SourceFile,LineNumberTable,Signature,InnerClasses,EnclosingMethod,*Annotation*,Exceptions
+
+# All app classes: DTOs, Retrofit interface, workers, receivers, Hilt entry points
+-keep class com.burootro.mailio.** { *; }
+
+# kotlinx.serialization
+-keepclassmembers @kotlinx.serialization.Serializable class ** {
+    *** Companion;
+    kotlinx.serialization.KSerializer serializer(...);
+}
 -dontnote kotlinx.serialization.**
--keepclassmembers class kotlinx.serialization.json.** {
-    *** Companion;
-}
--keepclasseswithmembers class kotlinx.serialization.json.** {
-    kotlinx.serialization.KSerializer serializer(...);
-}
--keep,includedescriptorclasses class com.burootro.mailio.**$$serializer { *; }
--keepclassmembers class com.burootro.mailio.** {
-    *** Companion;
-}
--keepclasseswithmembers class com.burootro.mailio.** {
-    kotlinx.serialization.KSerializer serializer(...);
-}
 
-# Retrofit
--keepattributes Signature, Exceptions
--dontwarn retrofit2.**
--keep class retrofit2.** { *; }
--keepclasseswithmembers class * {
-    @retrofit2.http.* <methods>;
-}
+# Retrofit + coroutines (suspend functions)
+-keep,allowobfuscation,allowshrinking interface retrofit2.Call
+-keep,allowobfuscation,allowshrinking class retrofit2.Response
+-keep,allowobfuscation,allowshrinking class kotlin.coroutines.Continuation
 
-# OkHttp
--dontwarn okhttp3.**
--dontwarn okio.**
-
-# Room
--keep class * extends androidx.room.RoomDatabase
--dontwarn androidx.room.paging.**
-
-# Hilt
--dontwarn com.google.dagger.**
+# Harmless missing optional classes
+-dontwarn org.bouncycastle.**
+-dontwarn org.conscrypt.**
+-dontwarn org.openjsse.**
+-dontwarn javax.annotation.**
+-dontwarn kotlinx.serialization.internal.ClassValueReferences
+-dontwarn com.google.errorprone.annotations.**

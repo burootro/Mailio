@@ -13,6 +13,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.burootro.mailio.MainActivity
+import com.burootro.mailio.R
 import com.burootro.mailio.data.repository.NewMessageInfo
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -111,7 +112,8 @@ class MailioNotifier @Inject constructor(
         )
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_email)
+            .setSmallIcon(R.drawable.ic_stat_mail)
+            .setColor(0xFF4F46E5.toInt())
             .setContentTitle(message.fromName)
             .setContentText(
                 if (code != null) "كود التحقق: $code" else message.subject

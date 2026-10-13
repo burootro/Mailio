@@ -1,42 +1,79 @@
 package com.burootro.mailio.ui.theme
 
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
-// ===== الخلفيات =====
-val DeepVoid = Color(0xFF05070D)        // أعمق نقطة - خلفية التطبيق
-val MidnightBlue = Color(0xFF0A0F1A)    // خلفية الأسطح
-val CardSurface = Color(0xFF111827)     // الكروت
-val ElevatedSurface = Color(0xFF1A2233) // الكروت المرفوعة
-val BorderSubtle = Color(0xFF1F2937)    // الحدود الخفيفة
+/**
+ * Mailio "Pearl" palette — a bright, premium light theme.
+ * Pearl backgrounds, pure white surfaces, deep ink text and a royal indigo → violet signature.
+ */
+object Mx {
+    // Canvas
+    val Canvas = Color(0xFFF4F5FA)
+    val CanvasDeep = Color(0xFFECEEF6)
+    val Surface = Color(0xFFFFFFFF)
+    val SurfaceSoft = Color(0xFFF8F9FD)
+    val Fill = Color(0xFFEFF1F8)
+    val FillStrong = Color(0xFFE4E7F2)
+    val Line = Color(0xFFE6E8F1)
+    val LineStrong = Color(0xFFD5D9E7)
 
-// ===== اللون الأساسي =====
-val NeonCyan = Color(0xFF22D3EE)        // الأساسي
-val CyanGlow = Color(0xFF67E8F9)        // التوهج الفاتح
-val CyanDeep = Color(0xFF0891B2)        // الغامق
-val CyanFaint = Color(0x1A22D3EE)       // شفاف للخلفيات
+    // Ink
+    val Ink = Color(0xFF0C1020)
+    val InkSoft = Color(0xFF2A3045)
+    val Text2 = Color(0xFF5A6176)
+    val Text3 = Color(0xFF8B91A5)
+    val Text4 = Color(0xFFB4B9C9)
 
-// ===== اللون الثانوي =====
-val ElectricViolet = Color(0xFF8B5CF6)  // للتدرجات
-val VioletGlow = Color(0xFFA78BFA)
-val VioletFaint = Color(0x1A8B5CF6)
+    // Signature
+    val Royal = Color(0xFF4F46E5)
+    val RoyalDeep = Color(0xFF3730A3)
+    val Violet = Color(0xFF7C3AED)
+    val Sky = Color(0xFF0EA5E9)
+    val Aqua = Color(0xFF06B6D4)
+    val RoyalTint = Color(0xFFEEF0FF)
+    val RoyalTint2 = Color(0xFFE0E3FF)
+    val VioletTint = Color(0xFFF3EDFF)
 
-// ===== النصوص =====
-val TextPrimary = Color(0xFFF1F5F9)
-val TextSecondary = Color(0xFF94A3B8)
-val TextTertiary = Color(0xFF64748B)
-val TextDisabled = Color(0xFF475569)
+    // Luxury accent
+    val Gold = Color(0xFFC8962B)
+    val GoldTint = Color(0xFFFFF6E0)
 
-// ===== الحالات =====
-val SuccessGreen = Color(0xFF10B981)
-val WarningAmber = Color(0xFFF59E0B)
-val ErrorRose = Color(0xFFF43F5E)
-val InfoBlue = Color(0xFF3B82F6)
+    // Status
+    val Green = Color(0xFF12A150)
+    val GreenTint = Color(0xFFE6F7EE)
+    val Amber = Color(0xFFE08A00)
+    val AmberTint = Color(0xFFFFF4E0)
+    val Rose = Color(0xFFE11D48)
+    val RoseTint = Color(0xFFFFE8EE)
 
-// ===== التدرجات =====
-val GradientStart = Color(0xFF22D3EE)
-val GradientMid = Color(0xFF6366F1)
-val GradientEnd = Color(0xFF8B5CF6)
+    val Scrim = Color(0x660C1020)
 
-// ===== الشيمر (تأثير التحميل) =====
-val ShimmerBase = Color(0xFF1A2233)
-val ShimmerHighlight = Color(0xFF2A3548)
+    // Gradients
+    val Signature: Brush = Brush.linearGradient(listOf(Royal, Violet))
+    val SignatureSoft: Brush = Brush.linearGradient(listOf(RoyalTint, VioletTint))
+    val Aurora: Brush = Brush.linearGradient(listOf(Color(0xFF4F46E5), Color(0xFF7C3AED), Color(0xFFDB2777)))
+    val Ocean: Brush = Brush.linearGradient(listOf(Color(0xFF0EA5E9), Color(0xFF4F46E5)))
+    val GoldBrush: Brush = Brush.linearGradient(listOf(Color(0xFFE9C46A), Color(0xFFC8962B)))
+    val HeroWash: Brush = Brush.verticalGradient(
+        listOf(Color(0xFFE7E9FF), Color(0xFFF1ECFF), Color(0xFFF4F5FA))
+    )
+
+    /** Stable pastel colors for avatars — the same seed always gets the same color. */
+    private val avatarPairs = listOf(
+        Color(0xFF4F46E5) to Color(0xFFEEF0FF),
+        Color(0xFF7C3AED) to Color(0xFFF3EDFF),
+        Color(0xFF0EA5E9) to Color(0xFFE6F6FE),
+        Color(0xFF12A150) to Color(0xFFE6F7EE),
+        Color(0xFFE08A00) to Color(0xFFFFF4E0),
+        Color(0xFFE11D48) to Color(0xFFFFE8EE),
+        Color(0xFFDB2777) to Color(0xFFFDE8F3),
+        Color(0xFF0D9488) to Color(0xFFE3F7F4)
+    )
+
+    fun avatar(seed: String): Pair<Color, Color> {
+        val h = seed.lowercase().hashCode()
+        val index = (if (h < 0) -(h + 1) else h) % avatarPairs.size
+        return avatarPairs[index]
+    }
+}

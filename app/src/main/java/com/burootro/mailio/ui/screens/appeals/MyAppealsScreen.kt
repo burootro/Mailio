@@ -1,22 +1,31 @@
 package com.burootro.mailio.ui.screens.appeals
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowForward
-import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Cancel
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Gavel
 import androidx.compose.material.icons.rounded.HourglassEmpty
-import androidx.compose.material.icons.rounded.Inbox
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.SupportAgent
+import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,14 +33,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.burootro.mailio.domain.model.Appeal
 import com.burootro.mailio.ui.components.EmptyState
-import com.burootro.mailio.ui.theme.*
+import com.burootro.mailio.ui.components.IconTile
+import com.burootro.mailio.ui.components.MxCard
+import com.burootro.mailio.ui.components.MxIconButton
+import com.burootro.mailio.ui.components.Pill
+import com.burootro.mailio.ui.components.Reveal
+import com.burootro.mailio.ui.components.Skeleton
+import com.burootro.mailio.ui.components.SoftButton
+import com.burootro.mailio.ui.components.TopBar
+import com.burootro.mailio.ui.theme.MonoStyle
+import com.burootro.mailio.ui.theme.Mx
 import com.burootro.mailio.util.TimeUtils
 
 @Composable
@@ -41,285 +59,101 @@ fun MyAppealsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    Scaffold(containerColor = DeepVoid) { padding ->
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(Mx.Canvas)
+            .statusBarsPadding()
+    ) {
+        TopBar(
+            title = "طلبات المراجعة",
+            subtitle = if (state.appeals.isEmpty()) "مفيش طلبات" else "${state.appeals.size} طلب",
+            onBack = onBack
+        ) {
+            MxIconButton(Icons.Rounded.Refresh, "تحديث", onClick = { viewModel.load() })
+        }
 
-        Box(modifier = Modifier.fillMaxSize()) {
+        when {
+            state.isLoading && state.appeals.isEmpty() -> Column(
+                Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                repeat(3) { Skeleton(Modifier.fillMaxWidth().height(130.dp)) }
+            }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(300.dp)
-                    .background(MailioGradients.backgroundGlow)
+            state.error != null && state.appeals.isEmpty() -> EmptyState(
+                icon = Icons.Rounded.CloudOff,
+                title = "مقدرناش نجيب طلباتك",
+                subtitle = state.error ?: "",
+                action = { SoftButton("جرّب تاني", onClick = { viewModel.load() }, icon = Icons.Rounded.Refresh) }
             )
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(top = padding.calculateTopPadding())
+            state.appeals.isEmpty() -> EmptyState(
+                icon = Icons.Rounded.Gavel,
+                title = "مفيش طلبات",
+                subtitle = "لو عندك عنوان موقوف، تقدر تطلب مراجعة من الصفحة الرئيسية"
+            )
+
+            else -> LazyColumn(
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-
-                // الهيدر
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .clip(RoundedCornerShape(13.dp))
-                            .background(CardSurface)
-                            .clickable(onClick = onBack),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.ArrowForward,
-                            contentDescription = "رجوع",
-                            tint = TextSecondary,
-                            modifier = Modifier.size(19.dp)
-                        )
-                    }
-
-                    Spacer(Modifier.width(14.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "طلبات المراجعة",
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = TextPrimary
-                        )
-                        Spacer(Modifier.height(3.dp))
-                        Text(
-                            text = if (state.appeals.isEmpty()) "مفيش طلبات"
-                            else "${state.appeals.size} طلب",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextTertiary
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .size(42.dp)
-                            .clip(RoundedCornerShape(13.dp))
-                            .background(CyanFaint)
-                            .clickable { viewModel.load() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "↻",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = CyanGlow
-                        )
-                    }
-                }
-
-                when {
-                    state.isLoading -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = NeonCyan)
-                        }
-                    }
-
-                    state.error != null -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = state.error ?: "",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = ErrorRose,
-                                    textAlign = TextAlign.Center
-                                )
-                                Spacer(Modifier.height(16.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(14.dp))
-                                        .background(CyanFaint)
-                                        .clickable { viewModel.load() }
-                                        .padding(horizontal = 24.dp, vertical = 12.dp)
-                                ) {
-                                    Text(
-                                        text = "جرب تاني",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = CyanGlow
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    state.appeals.isEmpty() -> {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            EmptyState(
-                                title = "مفيش طلبات",
-                                subtitle = "لو عندك عنوان موقوف، تقدر تطلب مراجعة من الصفحة الرئيسية",
-                                icon = {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Inbox,
-                                        contentDescription = null,
-                                        tint = CyanGlow,
-                                        modifier = Modifier.size(38.dp)
-                                    )
-                                }
-                            )
-                        }
-                    }
-
-                    else -> {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(
-                                start = 16.dp,
-                                end = 16.dp,
-                                top = 4.dp,
-                                bottom = padding.calculateBottomPadding() + 30.dp
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(items = state.appeals, key = { it.id }) { appeal ->
-                                AppealCard(appeal = appeal)
-                            }
-                        }
-                    }
+                itemsIndexed(state.appeals, key = { _, a -> a.id }) { index, appeal ->
+                    Reveal(index) { AppealCard(appeal) }
                 }
             }
         }
     }
 }
 
+private data class Look(val color: Color, val tint: Color, val label: String, val icon: ImageVector)
+
 @Composable
 private fun AppealCard(appeal: Appeal) {
-
-    val (statusColor, statusText, statusIcon) = when {
-        appeal.isApproved -> Triple(SuccessGreen, "تمت الموافقة", Icons.Rounded.CheckCircle)
-        appeal.isRejected -> Triple(ErrorRose, "مرفوض", Icons.Rounded.Cancel)
-        else -> Triple(WarningAmber, "قيد المراجعة", Icons.Rounded.HourglassEmpty)
+    val look = when {
+        appeal.isApproved -> Look(Mx.Green, Mx.GreenTint, "اتقبل", Icons.Rounded.CheckCircle)
+        appeal.isRejected -> Look(Mx.Rose, Mx.RoseTint, "اترفض", Icons.Rounded.Cancel)
+        else -> Look(Mx.Amber, Mx.AmberTint, "بنراجعه", Icons.Rounded.HourglassEmpty)
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(CardSurface)
-            .background(MailioGradients.cardSheen)
-            .border(1.dp, statusColor.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
-            .padding(16.dp)
-    ) {
-
-        // الحالة
+    MxCard(padding = PaddingValues(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(statusColor.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = statusIcon,
-                    contentDescription = null,
-                    tint = statusColor,
-                    modifier = Modifier.size(19.dp)
-                )
-            }
-
+            IconTile(look.icon, tint = look.color, background = look.tint)
             Spacer(Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
+            Column(Modifier.weight(1f)) {
                 Text(
-                    text = statusText,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = statusColor
+                    appeal.addressEmail ?: "طلب عام",
+                    style = MonoStyle.copy(color = Mx.Ink, textDirection = TextDirection.Ltr),
+                    maxLines = 1
                 )
-
-                if (!appeal.addressEmail.isNullOrBlank()) {
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = appeal.addressEmail,
-                        style = EmailAddressStyle.copy(
-                            fontSize = MaterialTheme.typography.bodySmall.fontSize
-                        ),
-                        color = TextTertiary
-                    )
-                }
+                Text("اتبعت ${TimeUtils.relativeShort(appeal.createdAt)}", style = MaterialTheme.typography.labelSmall, color = Mx.Text3)
             }
+            Pill(look.label, look.color, look.tint)
         }
+        Spacer(Modifier.height(12.dp))
+        Text("طلبك", style = MaterialTheme.typography.labelMedium, color = Mx.Text3)
+        Text(appeal.message, style = MaterialTheme.typography.bodyMedium, color = Mx.InkSoft)
 
-        Spacer(Modifier.height(14.dp))
-
-        // نص الطلب
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(DeepVoid)
-                .padding(13.dp)
-        ) {
-            Text(
-                text = "طلبك",
-                style = MaterialTheme.typography.labelSmall,
-                color = TextDisabled
-            )
-            Spacer(Modifier.height(5.dp))
-            Text(
-                text = appeal.message,
-                style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary,
-                lineHeight = 21.sp
-            )
-        }
-
-        // رد الإدارة
-        if (!appeal.adminReply.isNullOrBlank()) {
-            Spacer(Modifier.height(10.dp))
-
+        appeal.adminReply?.takeIf { it.isNotBlank() }?.let { reply ->
+            Spacer(Modifier.height(12.dp))
             Column(
-                modifier = Modifier
+                Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
-                    .background(statusColor.copy(alpha = 0.09f))
-                    .padding(13.dp)
+                    .background(look.tint)
+                    .padding(12.dp)
             ) {
-                Text(
-                    text = "رد الإدارة",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = statusColor
-                )
-                Spacer(Modifier.height(5.dp))
-                Text(
-                    text = appeal.adminReply,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
-                    lineHeight = 21.sp
-                )
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                text = "أُرسل ${TimeUtils.relativeShort(appeal.createdAt)}",
-                style = MaterialTheme.typography.labelSmall,
-                color = TextDisabled
-            )
-
-            if (appeal.repliedAt != null) {
-                Spacer(Modifier.weight(1f))
-                Text(
-                    text = "الرد ${TimeUtils.relativeShort(appeal.repliedAt)}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextDisabled
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.SupportAgent, null, tint = look.color, modifier = Modifier.size(15.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("رد الإدارة", style = MaterialTheme.typography.labelMedium, color = look.color)
+                    Spacer(Modifier.weight(1f))
+                    appeal.repliedAt?.let {
+                        Text(TimeUtils.relativeShort(it), style = MaterialTheme.typography.labelSmall, color = Mx.Text3)
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(reply, style = MaterialTheme.typography.bodyMedium, color = Mx.Ink)
             }
         }
     }

@@ -1,24 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-
+    <!-- Envelope body -->
+    <path android:pathData="M37,37 L71,37 A8,8 0 0 1 79,45 L79,65 A8,8 0 0 1 71,73 L37,73 A8,8 0 0 1 29,65 L29,45 A8,8 0 0 1 37,37 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="29"
+                android:startY="37"
+                android:endX="79"
+                android:endY="73">
+                <item android:offset="0" android:color="#FF4F46E5" />
+                <item android:offset="1" android:color="#FF7C3AED" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Flap -->
     <path
-        android:fillColor="#05070D"
-        android:pathData="M32,40 L76,40 A6,6 0 0,1 82,46 L82,68 A6,6 0 0,1 76,74 L32,74 A6,6 0 0,1 26,68 L26,46 A6,6 0 0,1 32,40 Z" />
-
-    <path
-        android:strokeColor="#22D3EE"
-        android:strokeWidth="3.5"
+        android:pathData="M34.5,44 L54,58 L73.5,44"
+        android:strokeWidth="4.2"
+        android:strokeColor="#FFFFFFFF"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:fillColor="#00000000"
-        android:pathData="M28,44 L54,62 L80,44" />
-
+        android:fillColor="#00000000" />
+    <!-- Spark -->
     <path
-        android:fillColor="#8B5CF6"
-        android:pathData="M76,34 m-7,0 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0" />
-
+        android:pathData="M78,35m-7.5,0a7.5,7.5 0,1 1,15 0a7.5,7.5 0,1 1,-15 0"
+        android:fillColor="#FF38BDF8" />
+    <path
+        android:pathData="M78,35m-3,0a3,3 0,1 1,6 0a3,3 0,1 1,-6 0"
+        android:fillColor="#FFFFFFFF" />
 </vector>

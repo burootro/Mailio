@@ -11,4 +11,3 @@
 local.properties
 *.jks
 *.keystore
-google-services.json

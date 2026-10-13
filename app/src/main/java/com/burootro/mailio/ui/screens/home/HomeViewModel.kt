@@ -7,6 +7,7 @@ import com.burootro.mailio.data.repository.MailRepository
 import com.burootro.mailio.data.repository.SyncRepository
 import com.burootro.mailio.domain.model.AddressLifetime
 import com.burootro.mailio.domain.model.MailAddress
+import com.burootro.mailio.domain.model.MailMessage
 import com.burootro.mailio.notifications.MailioNotifier
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -90,6 +91,24 @@ class HomeViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = HomeUiState()
     )
+
+    /** Every message across all addresses — the unified inbox tab. */
+    val recentMessages: StateFlow<List<MailMessage>> = repository.observeRecentMessages(300)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val starredMessages: StateFlow<List<MailMessage>> = repository.observeStarred()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val userName: StateFlow<String?> = prefs.googleName
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Guests who haven't saved their recovery key yet get a gentle reminder. */
+    val needsKeyBackup: StateFlow<Boolean> = combine(
+        prefs.isGoogleAccount,
+        prefs.isKeyBackedUp,
+        prefs.recoveryKey
+    ) { google, backedUp, key -> key != null && !google && !backedUp }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     private val _events = MutableStateFlow<HomeEvent?>(null)
     val events: StateFlow<HomeEvent?> = _events.asStateFlow()
@@ -354,6 +373,25 @@ class HomeViewModel @Inject constructor(
                     )
                 }
             )
+        }
+    }
+
+    /** One tap: a random permanent address, no questions asked. */
+    fun quickCreate() = createAddress()
+
+    // ===== Messages (unified inbox) =====
+
+    fun toggleStar(message: MailMessage) {
+        viewModelScope.launch { repository.setStarred(message.id, !message.isStarred) }
+    }
+
+    fun deleteMessage(message: MailMessage) {
+        viewModelScope.launch { syncRepository.deleteMessage(message.id) }
+    }
+
+    fun markAllMessagesRead() {
+        viewModelScope.launch {
+            uiState.value.addresses.forEach { repository.markAllRead(it.id) }
         }
     }
 

@@ -298,14 +298,15 @@ class SyncRepository @Inject constructor(
     suspend fun deleteMessage(messageId: String): Result<Unit> = withContext(Dispatchers.IO) {
         val message = messageDao.getById(messageId)
 
+        // Remove locally first so the UI reacts instantly, then tell the server.
+        messageDao.deleteById(messageId)
+        message?.let { refreshUnreadCount(it.addressId) }
+
         try {
             api.deleteMessage(messageId)
         } catch (e: Exception) {
-            // نكمل الحذف المحلي
+            // Local delete already done
         }
-
-        messageDao.deleteById(messageId)
-        message?.let { refreshUnreadCount(it.addressId) }
 
         Result.success(Unit)
     }

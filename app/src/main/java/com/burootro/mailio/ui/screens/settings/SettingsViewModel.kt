@@ -72,6 +72,20 @@ class SettingsViewModel @Inject constructor(
         initialValue = SettingsUiState()
     )
 
+    /** Recovery key for guest accounts — Google accounts don't need one. */
+    val recoveryKey: StateFlow<String?> = prefs.recoveryKey
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val isGoogleAccount: StateFlow<Boolean> = prefs.isGoogleAccount
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val isKeyBackedUp: StateFlow<Boolean> = prefs.isKeyBackedUp
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    fun markKeyBackedUp() {
+        viewModelScope.launch { prefs.setKeyBackedUp(true) }
+    }
+
     private val _events = MutableStateFlow<SettingsEvent?>(null)
     val events: StateFlow<SettingsEvent?> = _events.asStateFlow()
 

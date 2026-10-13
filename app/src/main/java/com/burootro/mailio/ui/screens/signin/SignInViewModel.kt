@@ -15,12 +15,17 @@ import javax.inject.Inject
 data class SignInUiState(
     val isLoading: Boolean = false,
     val isSkipping: Boolean = false,
+    val isRestoring: Boolean = false,
+    val restoreError: String? = null,
     val error: String? = null
-)
+) {
+    val isBusy: Boolean get() = isLoading || isSkipping || isRestoring
+}
 
 sealed interface SignInEvent {
     data class Success(val isNew: Boolean, val name: String?) : SignInEvent
     data object GuestReady : SignInEvent
+    data class Restored(val addresses: Int) : SignInEvent
 }
 
 @HiltViewModel
@@ -88,6 +93,45 @@ class SignInViewModel @Inject constructor(
                 }
             )
         }
+    }
+
+    /**
+     * Restore a guest account on a new phone using its recovery key (MLO-XXXX-XXXX-XXXX-XXXX).
+     */
+    fun restoreWithKey(rawKey: String) {
+        if (_uiState.value.isRestoring) return
+        val key = rawKey.trim().uppercase().replace(" ", "")
+
+        if (!Regex("^MLO(-[A-Z0-9]{4}){4}$").matches(key)) {
+            _uiState.value = _uiState.value.copy(restoreError = "المفتاح شكله مش مظبوط — لازم يبدأ بـ MLO-")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = SignInUiState(isRestoring = true)
+
+            syncRepository.restoreAccount(key).fold(
+                onSuccess = { result ->
+                    _uiState.value = SignInUiState()
+                    syncRepository.registerPushToken()
+                    _events.value = SignInEvent.Restored(result.addressesUpdated)
+                },
+                onFailure = { error ->
+                    val message = error.message.orEmpty()
+                    _uiState.value = SignInUiState(
+                        restoreError = when {
+                            message.contains("404") || message.contains("401") -> "المفتاح ده مش موجود"
+                            message.contains("403") -> "الحساب ده موقوف"
+                            else -> "مفيش اتصال بالسيرفر، جرّب تاني"
+                        }
+                    )
+                }
+            )
+        }
+    }
+
+    fun clearRestoreError() {
+        _uiState.value = _uiState.value.copy(restoreError = null)
     }
 
     fun onSignInCancelled() {
